@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlayerBarView: View {
     @EnvironmentObject var viewModel: AppViewModel
+    @ObservedObject var player: AudioPlayerManager
 
     var body: some View {
         HStack(spacing: 14) {
@@ -73,15 +74,15 @@ struct PlayerBarView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.white.opacity(0.82))
 
-            if viewModel.isLoading || viewModel.player.isConnecting {
+            if player.isConnecting {
                 ProgressView()
                     .controlSize(.small)
                     .tint(.white.opacity(0.82))
-            } else if viewModel.player.isPlaying || viewModel.player.streamBitrateKbps != nil || viewModel.player.streamThroughputKbps != nil {
+            } else if player.isPlaying || player.streamBitrateKbps != nil || player.streamThroughputKbps != nil {
                 StreamStatusView(
-                    level: viewModel.player.meterLevel,
-                    bitrateKbps: viewModel.player.streamBitrateKbps,
-                    throughputKbps: viewModel.player.streamThroughputKbps
+                    level: player.meterLevel,
+                    bitrateKbps: player.streamBitrateKbps,
+                    throughputKbps: player.streamThroughputKbps
                 )
             }
         }
@@ -95,14 +96,14 @@ struct PlayerBarView: View {
                     .foregroundStyle(.white.opacity(0.62))
 
                 Slider(value: Binding(
-                    get: { Double(viewModel.player.volume) },
-                    set: { viewModel.player.volume = Float($0) }
+                    get: { Double(player.volume) },
+                    set: { player.volume = Float($0) }
                 ), in: 0...1)
                 .frame(width: 84)
                 .tint(.white.opacity(0.82))
             }
 
-            if viewModel.player.isExternalPlaybackActive {
+            if player.isExternalPlaybackActive {
                 Image(systemName: "airplayaudio")
                     .font(.caption2)
                     .foregroundStyle(.blue.opacity(0.9))

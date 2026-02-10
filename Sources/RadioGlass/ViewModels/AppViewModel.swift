@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 @MainActor
@@ -51,6 +52,7 @@ final class AppViewModel: ObservableObject {
 
     private let service: RadioServing
     private let store = FavoritesStore()
+    private var playerCancellable: AnyCancellable?
     private var stationVariantsByPrimaryId: [String: [RadioStation]] = [:]
     private var countryCache: [String: CountrySnapshot] = [:]
     private var activeCountryLoadToken = UUID()
@@ -60,6 +62,9 @@ final class AppViewModel: ObservableObject {
     init(service: RadioServing = RadioBrowserService()) {
         self.service = service
         self.presets = store.load()
+        self.playerCancellable = player.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
 
         Task {
             await loadCountry(selectedCountry)

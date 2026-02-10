@@ -23,6 +23,15 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 380)
         }
         .navigationSplitViewStyle(.balanced)
+        .background(
+            WindowConfigurator { window in
+                window.isMovableByWindowBackground = true
+                window.isMovable = true
+                window.styleMask = [.titled, .resizable, .miniaturizable, .closable]
+                window.titleVisibility = .visible
+                window.titlebarAppearsTransparent = false
+            }
+        )
         .searchable(text: $viewModel.searchText, placement: .toolbar, prompt: tab == .countries ? "Search to add niche stations" : "Search stations")
         .onSubmit(of: .search) {
             Task {
@@ -34,7 +43,7 @@ struct ContentView: View {
             GeometryReader { geo in
                 HStack {
                     Spacer(minLength: 0)
-                    PlayerBarView()
+                    PlayerBarView(player: viewModel.player)
                         .frame(maxWidth: min(920, geo.size.width - 120))
                     Spacer(minLength: 0)
                 }

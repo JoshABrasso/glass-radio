@@ -11,8 +11,8 @@ struct RadioGlassApp: App {
                 .environmentObject(viewModel)
                 .frame(minWidth: 1180, minHeight: 760)
         }
-        .windowStyle(.titleBar)
-        .windowToolbarStyle(.unifiedCompact)
+        .windowStyle(.automatic)
+        .windowToolbarStyle(.automatic)
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About Glass Radio") {

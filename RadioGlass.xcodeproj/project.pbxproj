@@ -7,6 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00A1B2C3D1A1E00100A1B2C3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00000A1B2C3 /* Assets.xcassets */; };
+		00A1B2C3D1A1E02100A1B2C3 /* glass_radio.icon in Resources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E02000A1B2C3 /* glass_radio.icon */; };
+		00A1B2C3D1A1E01000A1B2C3 /* CuratedCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00010A1B2C3 /* CuratedCatalog.swift */; };
+		00A1B2C3D1A1E01100A1B2C3 /* StationArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00011A1B2C3 /* StationArtworkView.swift */; };
+		00A1B2C3D1A1E01200A1B2C3 /* CountryStationRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00012A1B2C3 /* CountryStationRowView.swift */; };
+		00A1B2C3D1A1E01300A1B2C3 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00013A1B2C3 /* PreferencesView.swift */; };
+		00A1B2C3D1A1E01400A1B2C3 /* WindowConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00014A1B2C3 /* WindowConfigurator.swift */; };
+		00A1B2C3D1A1E01500A1B2C3 /* StationLogoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00015A1B2C3 /* StationLogoProvider.swift */; };
+		00A1B2C3D1A1E01600A1B2C3 /* SystemVolumeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00016A1B2C3 /* SystemVolumeController.swift */; };
 		001D610A2A00000100A1B2C3 /* RadioGlassApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607A2A00000100A1B2C3 /* RadioGlassApp.swift */; };
 		001D610B2A00000100A1B2C3 /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607B2A00000100A1B2C3 /* RadioStation.swift */; };
 		001D610C2A00000100A1B2C3 /* AudioPlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607C2A00000100A1B2C3 /* AudioPlayerManager.swift */; };
@@ -22,6 +31,15 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		00A1B2C3D1A1E00000A1B2C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = App/Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E02000A1B2C3 /* glass_radio.icon */ = {isa = PBXFileReference; lastKnownFileType = file.icon; path = glass_radio.icon; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E00010A1B2C3 /* CuratedCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Models/CuratedCatalog.swift; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E00011A1B2C3 /* StationArtworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/StationArtworkView.swift; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E00012A1B2C3 /* CountryStationRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/CountryStationRowView.swift; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E00013A1B2C3 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/PreferencesView.swift; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E00014A1B2C3 /* WindowConfigurator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/WindowConfigurator.swift; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E00015A1B2C3 /* StationLogoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Services/StationLogoProvider.swift; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E00016A1B2C3 /* SystemVolumeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Services/SystemVolumeController.swift; sourceTree = SOURCE_ROOT; };
 		001D606A2A00000100A1B2C3 /* RadioGlass.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RadioGlass.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		001D60792A00000100A1B2C3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = App/Info.plist; sourceTree = SOURCE_ROOT; };
 		001D60902A00000100A1B2C3 /* RadioGlass.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App/RadioGlass.entitlements; sourceTree = SOURCE_ROOT; };
@@ -83,6 +101,7 @@
 		001D60702A00000100A1B2C3 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				00A1B2C3D1A1E00010A1B2C3 /* CuratedCatalog.swift */,
 				001D607B2A00000100A1B2C3 /* RadioStation.swift */,
 			);
 			path = Models;
@@ -94,6 +113,8 @@
 				001D607C2A00000100A1B2C3 /* AudioPlayerManager.swift */,
 				001D607D2A00000100A1B2C3 /* FavoritesStore.swift */,
 				001D607E2A00000100A1B2C3 /* RadioBrowserService.swift */,
+				00A1B2C3D1A1E00015A1B2C3 /* StationLogoProvider.swift */,
+				00A1B2C3D1A1E00016A1B2C3 /* SystemVolumeController.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -119,9 +140,13 @@
 			children = (
 				001D60812A00000100A1B2C3 /* AirPlayRoutePicker.swift */,
 				001D60822A00000100A1B2C3 /* ContentView.swift */,
+				00A1B2C3D1A1E00012A1B2C3 /* CountryStationRowView.swift */,
 				001D60832A00000100A1B2C3 /* FeaturedStationCardView.swift */,
 				001D60842A00000100A1B2C3 /* PlayerBarView.swift */,
+				00A1B2C3D1A1E00013A1B2C3 /* PreferencesView.swift */,
+				00A1B2C3D1A1E00011A1B2C3 /* StationArtworkView.swift */,
 				001D60852A00000100A1B2C3 /* StationRowView.swift */,
+				00A1B2C3D1A1E00014A1B2C3 /* WindowConfigurator.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -129,6 +154,8 @@
 		001D608F2A00000100A1B2C3 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				00A1B2C3D1A1E00000A1B2C3 /* Assets.xcassets */,
+				00A1B2C3D1A1E02000A1B2C3 /* glass_radio.icon */,
 				001D60792A00000100A1B2C3 /* Info.plist */,
 				001D60902A00000100A1B2C3 /* RadioGlass.entitlements */,
 			);
@@ -193,6 +220,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00A1B2C3D1A1E00100A1B2C3 /* Assets.xcassets in Resources */,
+				00A1B2C3D1A1E02100A1B2C3 /* glass_radio.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,6 +232,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00A1B2C3D1A1E01000A1B2C3 /* CuratedCatalog.swift in Sources */,
+				00A1B2C3D1A1E01100A1B2C3 /* StationArtworkView.swift in Sources */,
+				00A1B2C3D1A1E01200A1B2C3 /* CountryStationRowView.swift in Sources */,
+				00A1B2C3D1A1E01300A1B2C3 /* PreferencesView.swift in Sources */,
+				00A1B2C3D1A1E01400A1B2C3 /* WindowConfigurator.swift in Sources */,
+				00A1B2C3D1A1E01500A1B2C3 /* StationLogoProvider.swift in Sources */,
+				00A1B2C3D1A1E01600A1B2C3 /* SystemVolumeController.swift in Sources */,
 				001D610A2A00000100A1B2C3 /* RadioGlassApp.swift in Sources */,
 				001D610B2A00000100A1B2C3 /* RadioStation.swift in Sources */,
 				001D610C2A00000100A1B2C3 /* AudioPlayerManager.swift in Sources */,
@@ -274,6 +310,7 @@
 		001D60972A00000100A1B2C3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = glass_radio;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
@@ -296,6 +333,7 @@
 		001D60982A00000100A1B2C3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = glass_radio;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;

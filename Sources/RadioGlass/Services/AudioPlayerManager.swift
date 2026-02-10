@@ -86,7 +86,7 @@ final class AudioPlayerManager: ObservableObject {
         currentStation = station
         isPlaying = false
         isConnecting = true
-        streamBitrateKbps = nil
+        streamBitrateKbps = inferredBitrate(for: station)
         streamThroughputKbps = nil
         meterLevel = 0
         guard !streamURLs.isEmpty else {
