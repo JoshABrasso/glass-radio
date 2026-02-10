@@ -1,5 +1,9 @@
 # Glass Radio
 
+![macOS](https://img.shields.io/badge/platform-macOS-111111?style=flat-square)
+![SwiftUI](https://img.shields.io/badge/SwiftUI-06B6D4?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-16a34a?style=flat-square)
+
 A macOS radio app inspired by Apple Music with a liquid-glass aesthetic, curated global stations, and a fast, dynamic browsing experience.
 
 ![Glass Radio Screenshot](docs/screenshot-2026-02-10.png)
@@ -46,3 +50,7 @@ A macOS radio app inspired by Apple Music with a liquid-glass aesthetic, curated
 
 - Uses the public Radio Browser API endpoints.
 - Dynamic icon compilation happens during `./scripts/build-app.sh` when Xcode is available.
+
+## License
+
+MIT. See `LICENSE`.
