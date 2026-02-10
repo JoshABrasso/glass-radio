@@ -8,6 +8,183 @@ final class AppViewModel: ObservableObject {
         let allStations: [RadioStation]
         let stationCount: Int
         let variantsByPrimary: [String: [RadioStation]]
+        let majorBrandScoreById: [String: Int]
+    }
+
+    private struct SnapshotBuilder {
+        static func buildSnapshot(from rawStations: [RadioStation], for country: CountryPreset) -> CountrySnapshot {
+            let sanitized = sanitizeStations(rawStations)
+            let consolidated = consolidateStationVariants(sanitized)
+            let allStations = consolidated.primaryStations
+            let topStations = curatedTopStations(from: allStations, for: country)
+            let brandScoreById = majorBrandScoreById(for: allStations, brands: country.topBrands)
+            return CountrySnapshot(
+                topStations: topStations,
+                allStations: allStations,
+                stationCount: allStations.count,
+                variantsByPrimary: consolidated.variantsByPrimary,
+                majorBrandScoreById: brandScoreById
+            )
+        }
+
+        private static func sanitizeStations(_ stations: [RadioStation]) -> [RadioStation] {
+            uniqueById(stations)
+                .filter { station in
+                    let hasStream = !(station.urlResolved.isEmpty) || !(station.url?.isEmpty ?? true)
+                    let lower = station.name.lowercased()
+                    return hasStream && !lower.contains("scanner") && !lower.contains("test") && !lower.contains("localhost")
+                }
+        }
+
+        private static func curatedTopStations(from stations: [RadioStation], for country: CountryPreset) -> [RadioStation] {
+            let curated = stations
+                .compactMap { station -> (Int, RadioStation)? in
+                    guard let idx = country.topBrands.firstIndex(where: { brandMatches(stationName: station.name, brand: $0) }) else {
+                        return nil
+                    }
+                    return (idx, station)
+                }
+                .sorted { lhs, rhs in
+                    if lhs.0 != rhs.0 { return lhs.0 < rhs.0 }
+                    return popularity(lhs.1) > popularity(rhs.1)
+                }
+                .map(\.1)
+
+            return uniqueById(curated)
+        }
+
+        private static func consolidateStationVariants(_ stations: [RadioStation]) -> (primaryStations: [RadioStation], variantsByPrimary: [String: [RadioStation]]) {
+            var grouped: [String: [RadioStation]] = [:]
+
+            for station in stations {
+                let key = canonicalStationName(station.name)
+                grouped[key, default: []].append(station)
+            }
+
+            var primaries: [RadioStation] = []
+            var variantsByPrimary: [String: [RadioStation]] = [:]
+
+            for group in grouped.values {
+                let sortedGroup = group.sorted { lhs, rhs in
+                    if isLikelyVariantName(lhs.name) != isLikelyVariantName(rhs.name) {
+                        return !isLikelyVariantName(lhs.name)
+                    }
+
+                    let lhsHasArtwork = !(lhs.favicon?.isEmpty ?? true)
+                    let rhsHasArtwork = !(rhs.favicon?.isEmpty ?? true)
+                    if lhsHasArtwork != rhsHasArtwork { return lhsHasArtwork }
+
+                    let lhsPopularity = popularity(lhs)
+                    let rhsPopularity = popularity(rhs)
+                    if lhsPopularity != rhsPopularity { return lhsPopularity > rhsPopularity }
+
+                    return lhs.name.count < rhs.name.count
+                }
+
+                guard let primary = sortedGroup.first else { continue }
+                primaries.append(primary)
+                variantsByPrimary[primary.id] = sortedGroup
+            }
+
+            return (uniqueById(primaries), variantsByPrimary)
+        }
+
+        private static func popularity(_ station: RadioStation) -> Int {
+            (station.votes ?? 0) + ((station.clickcount ?? 0) / 3)
+        }
+
+        private static func uniqueById(_ stations: [RadioStation]) -> [RadioStation] {
+            var seen = Set<String>()
+            var output: [RadioStation] = []
+
+            for station in stations where !seen.contains(station.stationuuid) {
+                seen.insert(station.stationuuid)
+                output.append(station)
+            }
+
+            return output
+        }
+
+        private static func normalizeStationName(_ raw: String) -> String {
+            raw
+                .lowercased()
+                .replacingOccurrences(of: "&", with: "and")
+                .replacingOccurrences(of: "-", with: " ")
+                .replacingOccurrences(of: "_", with: " ")
+                .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .joined(separator: " ")
+                .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        private static func canonicalStationName(_ raw: String) -> String {
+            let simplified = raw
+                .lowercased()
+                .replacingOccurrences(of: #"\([^)]*\)"#, with: " ", options: .regularExpression)
+                .replacingOccurrences(of: #"\[[^\]]*\]"#, with: " ", options: .regularExpression)
+                .replacingOccurrences(of: #"\b\d{2,3}\s?(k|kbps)\b"#, with: " ", options: .regularExpression)
+                .replacingOccurrences(of: #"\b(aac\+?|mp3|ogg|stream|live|hq|lq)\b"#, with: " ", options: .regularExpression)
+
+            return normalizeStationName(simplified)
+        }
+
+        private static func isLikelyVariantName(_ name: String) -> Bool {
+            let lowered = name.lowercased()
+            return lowered.range(of: #"\b\d{2,3}\s?(k|kbps)\b"#, options: .regularExpression) != nil
+                || lowered.contains("aac")
+                || lowered.contains("mp3")
+                || lowered.contains("stream")
+        }
+
+        private static func brandMatches(stationName: String, brand: String) -> Bool {
+            let station = normalizeStationName(stationName)
+            let target = normalizeStationName(brand)
+            guard !station.isEmpty, !target.isEmpty else { return false }
+
+            if station.contains(target) { return true }
+
+            let tokens = target.split(separator: " ").map(String.init)
+            if tokens.count > 1 {
+                return tokens.allSatisfy { station.contains($0) }
+            }
+            return false
+        }
+
+        private static func majorBrandScoreById(for stations: [RadioStation], brands: [String]) -> [String: Int] {
+            guard !stations.isEmpty, !brands.isEmpty else { return [:] }
+            let normalizedBrands = brands.enumerated().map { (idx, brand) in
+                (idx, normalizeStationName(brand))
+            }
+
+            var scores: [String: Int] = [:]
+            scores.reserveCapacity(stations.count)
+
+            for station in stations {
+                let normalized = normalizeStationName(station.name)
+                guard !normalized.isEmpty else { continue }
+
+                var bestScore = 0
+                for (idx, brand) in normalizedBrands {
+                    guard !brand.isEmpty else { continue }
+                    if normalized.contains(brand) {
+                        let score = 1_000_000 - (idx * 10_000)
+                        if score > bestScore { bestScore = score }
+                        continue
+                    }
+
+                    let tokens = brand.split(separator: " ").map(String.init)
+                    if tokens.count > 1 && tokens.allSatisfy({ normalized.contains($0) }) {
+                        let score = 1_000_000 - (idx * 10_000)
+                        if score > bestScore { bestScore = score }
+                    }
+                }
+
+                if bestScore > 0 {
+                    scores[station.id] = bestScore
+                }
+            }
+            return scores
+        }
     }
 
     enum StationSort: String, CaseIterable, Identifiable {
@@ -47,31 +224,42 @@ final class AppViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var countryInfoMessage: String?
     @Published var nowPlayingStation: RadioStation?
+    @Published var isInitialLoading = false
+    @Published var initialLoadingProgress: Double = 0
+    @Published var initialLoadingMessage: String = "Preparing your library..."
+    @Published var isBackgroundRefreshing = false
+    @Published var backgroundRefreshProgress: Double = 0
+    @Published var backgroundRefreshMessage: String = "Refreshing stations..."
 
     let player = AudioPlayerManager()
 
     private let service: RadioServing
     private let store = FavoritesStore()
-    private var playerCancellable: AnyCancellable?
     private var stationVariantsByPrimaryId: [String: [RadioStation]] = [:]
+    private var majorBrandScoreById: [String: Int] = [:]
     private var countryCache: [String: CountrySnapshot] = [:]
     private var activeCountryLoadToken = UUID()
     private var backgroundCacheTask: Task<Void, Never>?
     private var recentCountryIDs: [String] = []
+    private let initialCacheKey = "GlassRadio.InitialCacheComplete"
 
     init(service: RadioServing = RadioBrowserService()) {
         self.service = service
         self.presets = store.load()
-        self.playerCancellable = player.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
+        if !UserDefaults.standard.bool(forKey: initialCacheKey) {
+            Task {
+                await performInitialCache()
+                await loadCountry(selectedCountry)
+                await loadDiscover()
+                startBackgroundRefresh()
+            }
+        } else {
+            Task {
+                await loadCountry(selectedCountry)
+                await loadDiscover()
+            }
+            startBackgroundRefresh()
         }
-
-        Task {
-            await loadCountry(selectedCountry)
-            await loadDiscover()
-        }
-
-        startBackgroundCaching()
     }
 
     var filteredCountryStations: [RadioStation] {
@@ -138,7 +326,7 @@ final class AppViewModel: ObservableObject {
         do {
             let quickStations = try await service.fetchCountryStations(country: country.apiName, countryCode: country.countryCode, limit: 700)
             guard isLoadActive(loadToken, for: country) else { return }
-            applyStations(quickStations, for: country)
+            await applyStations(quickStations, for: country)
 
             async let expandedStationsTask = service.fetchCountryStations(country: country.apiName, countryCode: country.countryCode, limit: 2400)
             async let majorBrandTask = fetchMajorBrandStations(for: country)
@@ -149,7 +337,7 @@ final class AppViewModel: ObservableObject {
             let regionalStations = try await regionalTask
             guard isLoadActive(loadToken, for: country) else { return }
 
-            applyStations(quickStations + expandedStations + majorBrandStations + regionalStations, for: country)
+            await applyStations(quickStations + expandedStations + majorBrandStations + regionalStations, for: country)
             countryInfoMessage = nil
         } catch {
             guard isLoadActive(loadToken, for: country) else { return }
@@ -307,15 +495,11 @@ final class AppViewModel: ObservableObject {
     }
     
     private func majorBrandPriority(_ station: RadioStation) -> Int {
-        guard let idx = selectedCountry.topBrands.firstIndex(where: { brandMatches(stationName: station.name, brand: $0) }) else {
-            return 0
-        }
-        // Ensure flagship brands surface in "Most Popular" views.
-        return 1_000_000 - (idx * 10_000)
+        majorBrandScoreById[station.id] ?? 0
     }
     
     private func matchesMajorBrand(_ station: RadioStation) -> Bool {
-        selectedCountry.topBrands.contains { brandMatches(stationName: station.name, brand: $0) }
+        (majorBrandScoreById[station.id] ?? 0) > 0
     }
 
     var genreFilteredStations: [RadioStation] {
@@ -434,8 +618,8 @@ final class AppViewModel: ObservableObject {
         return uniqueById(merged)
     }
 
-    private func applyStations(_ rawStations: [RadioStation], for country: CountryPreset) {
-        let snapshot = buildSnapshot(from: rawStations, for: country)
+    private func applyStations(_ rawStations: [RadioStation], for country: CountryPreset) async {
+        let snapshot = await buildSnapshot(from: rawStations, for: country)
         countryCache[country.id] = snapshot
         applySnapshot(snapshot)
 
@@ -449,24 +633,18 @@ final class AppViewModel: ObservableObject {
         countryAllStations = snapshot.allStations
         countryStationCount = snapshot.stationCount
         stationVariantsByPrimaryId = snapshot.variantsByPrimary
+        majorBrandScoreById = snapshot.majorBrandScoreById
         player.setStationVariants(snapshot.variantsByPrimary)
     }
 
-    private func buildSnapshot(from rawStations: [RadioStation], for country: CountryPreset) -> CountrySnapshot {
-        let sanitized = sanitizeStations(rawStations)
-        let consolidated = consolidateStationVariants(sanitized)
-        let allStations = consolidated.primaryStations
-        let topStations = curatedTopStations(from: allStations, for: country)
-        return CountrySnapshot(
-            topStations: topStations,
-            allStations: allStations,
-            stationCount: allStations.count,
-            variantsByPrimary: consolidated.variantsByPrimary
-        )
+    private func buildSnapshot(from rawStations: [RadioStation], for country: CountryPreset) async -> CountrySnapshot {
+        await Task.detached(priority: .userInitiated) {
+            SnapshotBuilder.buildSnapshot(from: rawStations, for: country)
+        }.value
     }
 
-    private func storeSnapshot(_ rawStations: [RadioStation], for country: CountryPreset) {
-        let snapshot = buildSnapshot(from: rawStations, for: country)
+    private func storeSnapshot(_ rawStations: [RadioStation], for country: CountryPreset) async {
+        let snapshot = await buildSnapshot(from: rawStations, for: country)
         countryCache[country.id] = snapshot
     }
 
@@ -478,12 +656,57 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func startBackgroundCaching() {
+    private func startBackgroundRefresh() {
         backgroundCacheTask?.cancel()
         backgroundCacheTask = Task.detached(priority: .background) { [weak self] in
             guard let self else { return }
-            await self.prewarmCache()
+            await self.quickRefreshAtLaunch()
             await self.periodicCacheRefresh()
+        }
+    }
+
+    private func performInitialCache() async {
+        await MainActor.run {
+            isInitialLoading = true
+            initialLoadingProgress = 0
+            initialLoadingMessage = "Preparing your library..."
+        }
+
+        let countries = CountryPreset.all
+        let total = max(1, countries.count)
+
+        for (index, country) in countries.enumerated() {
+            await MainActor.run {
+                initialLoadingMessage = "Caching \(country.displayName)..."
+                initialLoadingProgress = Double(index) / Double(total)
+            }
+
+            do {
+                let stations = try await service.fetchCountryStations(
+                    country: country.apiName,
+                    countryCode: country.countryCode,
+                    limit: 2000
+                )
+                async let major = fetchMajorBrandStations(for: country)
+                async let regional = fetchRegionalStations(for: country)
+                let merged = stations + (try await major) + (try await regional)
+                await storeSnapshot(merged, for: country)
+                await prefetchLogos(for: Array(merged.prefix(40)))
+            } catch {
+                continue
+            }
+            await Task.yield()
+        }
+
+        await MainActor.run {
+            initialLoadingProgress = 1
+            initialLoadingMessage = "Finishing up..."
+        }
+
+        UserDefaults.standard.set(true, forKey: initialCacheKey)
+
+        await MainActor.run {
+            isInitialLoading = false
         }
     }
 
@@ -492,9 +715,7 @@ final class AppViewModel: ObservableObject {
         for country in seed {
             do {
                 let stations = try await service.fetchCountryStations(country: country.apiName, countryCode: country.countryCode, limit: 500)
-                await MainActor.run {
-                    self.storeSnapshot(stations, for: country)
-                }
+                await storeSnapshot(stations, for: country)
                 await prefetchLogos(for: Array(stations.prefix(30)))
             } catch {
                 continue
@@ -507,17 +728,63 @@ final class AppViewModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 1_800_000_000_000) // 30 minutes
             let ids = await MainActor.run { recentCountryIDs }
             let countries = CountryPreset.all.filter { ids.contains($0.id) }
+            await MainActor.run {
+                isBackgroundRefreshing = !countries.isEmpty
+                backgroundRefreshProgress = 0
+                backgroundRefreshMessage = "Refreshing stations..."
+            }
+
+            let total = max(1, countries.count)
             for country in countries {
                 do {
                     let stations = try await service.fetchCountryStations(country: country.apiName, countryCode: country.countryCode, limit: 600)
-                    await MainActor.run {
-                        self.storeSnapshot(stations, for: country)
-                    }
+                    await storeSnapshot(stations, for: country)
                     await prefetchLogos(for: Array(stations.prefix(20)))
                 } catch {
                     continue
                 }
+                await MainActor.run {
+                    backgroundRefreshProgress += 1 / Double(total)
+                }
             }
+
+            await MainActor.run {
+                isBackgroundRefreshing = false
+            }
+        }
+    }
+
+    private func quickRefreshAtLaunch() async {
+        let seed = await MainActor.run { selectedCountry }
+        var countries = [seed]
+        countries.append(contentsOf: CountryPreset.all.prefix(3))
+        let unique = Array(Set(countries.map(\.id))).compactMap { id in
+            CountryPreset.all.first { $0.id == id }
+        }
+
+        guard !unique.isEmpty else { return }
+        await MainActor.run {
+            isBackgroundRefreshing = true
+            backgroundRefreshProgress = 0
+            backgroundRefreshMessage = "Refreshing stations..."
+        }
+
+        let total = max(1, unique.count)
+        for country in unique {
+            do {
+                let stations = try await service.fetchCountryStations(country: country.apiName, countryCode: country.countryCode, limit: 400)
+                await storeSnapshot(stations, for: country)
+                await prefetchLogos(for: Array(stations.prefix(16)))
+            } catch {
+                continue
+            }
+            await MainActor.run {
+                backgroundRefreshProgress += 1 / Double(total)
+            }
+        }
+
+        await MainActor.run {
+            isBackgroundRefreshing = false
         }
     }
 

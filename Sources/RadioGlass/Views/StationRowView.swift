@@ -3,9 +3,14 @@ import SwiftUI
 struct StationRowView: View {
     let station: RadioStation
     let isPreset: Bool
-    let isPlaying: Bool
     let onPlay: () -> Void
     let onTogglePreset: () -> Void
+
+    @EnvironmentObject private var player: AudioPlayerManager
+
+    private var isPlaying: Bool {
+        player.isCurrentlyPlaying(station)
+    }
 
     var body: some View {
         HStack(spacing: 12) {

@@ -3,11 +3,15 @@ import SwiftUI
 struct CountryStationRowView: View {
     let station: RadioStation
     let isPreset: Bool
-    let isPlaying: Bool
     let onPlay: () -> Void
     let onTogglePreset: () -> Void
 
+    @EnvironmentObject private var player: AudioPlayerManager
     @State private var isHovering = false
+
+    private var isPlaying: Bool {
+        player.isCurrentlyPlaying(station)
+    }
 
     var body: some View {
         HStack(spacing: 10) {

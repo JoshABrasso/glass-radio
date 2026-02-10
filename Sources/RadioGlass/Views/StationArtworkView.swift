@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import SwiftUI
 
 struct StationArtworkView: View {
@@ -58,11 +59,11 @@ struct StationArtworkView: View {
     }
 }
 
-@MainActor
 final class StationArtworkModel: ObservableObject {
     @Published var image: NSImage?
 
     private var loadedStationID: String?
+    private var loadTask: Task<Void, Never>?
 
     init(station: RadioStation) {
         loadedStationID = nil
@@ -74,12 +75,30 @@ final class StationArtworkModel: ObservableObject {
         }
 
         loadedStationID = station.stationuuid
+        loadTask?.cancel()
+        let stationID = station.stationuuid
 
-        if let data = await StationLogoProvider.shared.logoData(for: station),
-           let img = NSImage(data: data) {
-            image = img
-        } else {
-            image = nil
+        loadTask = Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
+            let data = await StationLogoProvider.shared.logoData(for: station)
+            let decoded = data.flatMap { self.decodeImage(from: $0, maxPixelSize: 256) }
+            await MainActor.run {
+                guard self.loadedStationID == stationID else { return }
+                self.image = decoded
+            }
         }
+    }
+
+    private func decodeImage(from data: Data, maxPixelSize: Int) -> NSImage? {
+        let options: [CFString: Any] = [
+            kCGImageSourceShouldCache: false,
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize
+        ]
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return NSImage(data: data)
+        }
+        return NSImage(cgImage: cgImage, size: .zero)
     }
 }

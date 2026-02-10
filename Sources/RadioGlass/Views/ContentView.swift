@@ -12,50 +12,71 @@ struct ContentView: View {
     @State private var tab: Tab = .countries
 
     var body: some View {
-        NavigationSplitView {
-            leftSidebar
-                .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 320)
-        } content: {
-            centerContent
-                .navigationSplitViewColumnWidth(min: 560, ideal: 980, max: 2600)
-        } detail: {
-            rightCountryPanel
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 380)
-        }
-        .navigationSplitViewStyle(.balanced)
-        .background(
-            WindowConfigurator { window in
-                window.isMovableByWindowBackground = true
-                window.isMovable = true
-                window.styleMask = [.titled, .resizable, .miniaturizable, .closable]
-                window.titleVisibility = .visible
-                window.titlebarAppearsTransparent = false
+        ZStack(alignment: .bottomLeading) {
+            NavigationSplitView {
+                leftSidebar
+                    .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 320)
+            } content: {
+                centerContent
+                    .navigationSplitViewColumnWidth(min: 560, ideal: 980, max: 2600)
+            } detail: {
+                rightCountryPanel
+                    .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 380)
             }
-        )
-        .searchable(text: $viewModel.searchText, placement: .toolbar, prompt: tab == .countries ? "Search to add niche stations" : "Search stations")
-        .onSubmit(of: .search) {
-            Task {
-                await viewModel.performSearch()
-                tab = .search
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            GeometryReader { geo in
-                HStack {
-                    Spacer(minLength: 0)
-                    PlayerBarView(player: viewModel.player)
-                        .frame(maxWidth: min(920, geo.size.width - 120))
-                    Spacer(minLength: 0)
+            .navigationSplitViewStyle(.balanced)
+            .disabled(viewModel.isInitialLoading)
+            .background(
+                WindowConfigurator { window in
+                    window.isMovableByWindowBackground = true
+                    window.isMovable = true
+                    window.styleMask = [.titled, .resizable, .miniaturizable, .closable]
+                    window.titleVisibility = .visible
+                    window.titlebarAppearsTransparent = false
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 8)
+            )
+            .searchable(text: $viewModel.searchText, placement: .toolbar, prompt: tab == .countries ? "Search to add niche stations" : "Search stations")
+            .onSubmit(of: .search) {
+                Task {
+                    await viewModel.performSearch()
+                    tab = .search
+                }
             }
-            .frame(height: 58)
+            .safeAreaInset(edge: .bottom) {
+                GeometryReader { geo in
+                    HStack {
+                        Spacer(minLength: 0)
+                        PlayerBarView(player: viewModel.player)
+                            .frame(maxWidth: min(920, geo.size.width - 120))
+                        Spacer(minLength: 0)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 8)
+                }
+                .frame(height: 58)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea(.container, edges: .horizontal)
+            .appBackground()
+
+            if viewModel.isBackgroundRefreshing {
+                BackgroundRefreshBadge(
+                    message: viewModel.backgroundRefreshMessage,
+                    progress: viewModel.backgroundRefreshProgress
+                )
+                .padding(.leading, 22)
+                .padding(.bottom, 72)
+            }
+
+            if viewModel.isInitialLoading {
+                InitialLoadingView(
+                    message: viewModel.initialLoadingMessage,
+                    progress: viewModel.initialLoadingProgress
+                )
+                .transition(.opacity)
+                .zIndex(5)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea(.container, edges: .horizontal)
-        .appBackground()
     }
 
     private var leftSidebar: some View {
@@ -311,26 +332,24 @@ struct ContentView: View {
                                 let columns = Array(repeating: GridItem(.flexible(minimum: 320), spacing: 12), count: columnCount)
                                 LazyVGrid(columns: columns, spacing: 8) {
                                     ForEach(viewModel.genreFilteredStations) { station in
-                                        CountryStationRowView(
-                                            station: station,
-                                            isPreset: viewModel.isPreset(station),
-                                            isPlaying: viewModel.isCurrentlyPlaying(station),
-                                            onPlay: { viewModel.play(station, in: viewModel.genreFilteredStations) },
-                                            onTogglePreset: { viewModel.togglePreset(station) }
-                                        )
-                                    }
+                                    CountryStationRowView(
+                                        station: station,
+                                        isPreset: viewModel.isPreset(station),
+                                        onPlay: { viewModel.play(station, in: viewModel.genreFilteredStations) },
+                                        onTogglePreset: { viewModel.togglePreset(station) }
+                                    )
+                                }
                                 }
                             } else {
                                 LazyVStack(spacing: 6) {
                                     ForEach(viewModel.genreFilteredStations) { station in
-                                        CountryStationRowView(
-                                            station: station,
-                                            isPreset: viewModel.isPreset(station),
-                                            isPlaying: viewModel.isCurrentlyPlaying(station),
-                                            onPlay: { viewModel.play(station, in: viewModel.genreFilteredStations) },
-                                            onTogglePreset: { viewModel.togglePreset(station) }
-                                        )
-                                    }
+                                    CountryStationRowView(
+                                        station: station,
+                                        isPreset: viewModel.isPreset(station),
+                                        onPlay: { viewModel.play(station, in: viewModel.genreFilteredStations) },
+                                        onTogglePreset: { viewModel.togglePreset(station) }
+                                    )
+                                }
                                 }
                             }
                         }
@@ -354,7 +373,6 @@ struct ContentView: View {
                     CountryStationRowView(
                         station: station,
                         isPreset: viewModel.isPreset(station),
-                        isPlaying: viewModel.isCurrentlyPlaying(station),
                         onPlay: { viewModel.play(station, in: viewModel.searchResults) },
                         onTogglePreset: { viewModel.togglePreset(station) }
                     )
@@ -454,5 +472,76 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.black.opacity(0.22))
+    }
+}
+
+private struct InitialLoadingView: View {
+    let message: String
+    let progress: Double
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .background(.ultraThinMaterial)
+
+            VStack(spacing: 14) {
+                Text("Welcome to Glass Radio")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+
+                Text("Building your global radio library")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .frame(width: 260)
+
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.vertical, 24)
+            .padding(.horizontal, 28)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.45), radius: 24, x: 0, y: 12)
+            )
+        }
+        .allowsHitTesting(true)
+    }
+}
+
+private struct BackgroundRefreshBadge: View {
+    let message: String
+    let progress: Double
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView(value: progress)
+                .progressViewStyle(.linear)
+                .frame(width: 120)
+
+            Text(message)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.75))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.35), radius: 14, x: 0, y: 6)
     }
 }

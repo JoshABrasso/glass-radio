@@ -31,6 +31,8 @@ final class AudioPlayerManager: ObservableObject {
     private let pathMonitor = NWPathMonitor()
     private let pathMonitorQueue = DispatchQueue(label: "RadioGlass.NetworkPathMonitor")
     private let systemVolumeController = SystemVolumeController()
+    private let volumeQueue = DispatchQueue(label: "RadioGlass.Volume", qos: .utility)
+    private var pendingVolumeWork: DispatchWorkItem?
     private var prefersLowerBitrate = false
     private var playSessionID = 0
     private var stalledObserver: NSObjectProtocol?
@@ -312,7 +314,17 @@ final class AudioPlayerManager: ObservableObject {
         let effective = shouldCap ? min(clampedVolume, externalSafetyCap) : clampedVolume
         player?.volume = effective
         applyItemAudioMix(gain: effective)
-        _ = systemVolumeController.setOutputVolume(effective)
+
+        // Avoid blocking the main thread with CoreAudio calls.
+        let shouldControlSystem = isExternalPlaybackActive || audioOnlyAirPlayMode
+        guard shouldControlSystem else { return }
+        pendingVolumeWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            _ = self.systemVolumeController.setOutputVolume(effective)
+        }
+        pendingVolumeWork = work
+        volumeQueue.asyncAfter(deadline: .now() + 0.15, execute: work)
     }
 
     private func applyItemAudioMix(gain: Float) {

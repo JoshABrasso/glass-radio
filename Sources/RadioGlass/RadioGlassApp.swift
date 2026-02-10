@@ -9,6 +9,7 @@ struct RadioGlassApp: App {
         WindowGroup("Glass Radio") {
             ContentView()
                 .environmentObject(viewModel)
+                .environmentObject(viewModel.player)
                 .frame(minWidth: 1180, minHeight: 760)
         }
         .windowStyle(.automatic)
