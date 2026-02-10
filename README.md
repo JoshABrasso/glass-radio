@@ -1,59 +1,48 @@
-# RadioGlass
+# Glass Radio
 
-RadioGlass is a macOS SwiftUI app inspired by Apple Music, with a liquid-glass visual style and global live radio discovery.
+A macOS radio app inspired by Apple Music with a liquid-glass aesthetic, curated global stations, and a fast, dynamic browsing experience.
 
-## Implemented foundation
+![Glass Radio Screenshot](docs/screenshot-2026-02-10.png)
 
-- Apple Music-like split layout (Sidebar + content + persistent player bar)
-- Liquid glass cards and atmospheric gradient backdrop
-- Featured station cards and hero section for premium first-load experience
-- Global trending stations from Radio Browser
-- Curated top countries list (by station count)
-- Country-level popular station view
-- Global station search
-- Favorites add/remove with persistence in `UserDefaults`
-- Recently played station rail
-- In-app streaming using `AVPlayer`
-- AirPlay route picker (`AVRoutePickerView`)
-- Now Playing metadata integration (`MPNowPlayingInfoCenter`)
-- Media key / Control Center command support (`MPRemoteCommandCenter`)
-- App-level playback command menu and handoff activity metadata
+## Highlights
 
-## Project layout
+- Apple Music‑style three‑pane layout with a persistent player bar
+- Curated top stations per country + full catalog browsing and search
+- Genre filtering with responsive multi‑column layouts on large screens
+- Favorites/presets with local persistence
+- Streaming playback via AVPlayer with AirPlay routing
+- Dynamic macOS icon support (Icon Composer `.icon` asset)
+
+## Requirements
+
+- macOS 14+
+- Xcode 26+ for dynamic icon compilation via `actool`
+
+## Run (Xcode)
+
+1. Open `RadioGlass.xcodeproj` in Xcode.
+2. Select the `RadioGlass` scheme.
+3. Set your Team in Signing & Capabilities for `com.radioglass.app`.
+4. Run on `My Mac`.
+
+## Run (no Xcode)
+
+1. Build the app bundle:
+   `./scripts/build-app.sh`
+2. Launch:
+   `open dist/RadioGlass.app`
+
+## Project Layout
 
 - `Package.swift`
 - `Sources/RadioGlass/RadioGlassApp.swift`
 - `Sources/RadioGlass/Views/` UI
 - `Sources/RadioGlass/ViewModels/` app state
 - `Sources/RadioGlass/Services/` API, playback, persistence
-- `Sources/RadioGlass/Theme/` liquid-glass styling helpers
-
-## Open and run
-
-1. Open `RadioGlass.xcodeproj` in Xcode.
-2. Select the `RadioGlass` scheme.
-3. In Signing & Capabilities, set your Team for `com.radioglass.app`.
-4. Run on `My Mac`.
-
-## Run without Xcode
-
-1. Build a standalone app bundle:
-   `./scripts/build-app.sh`
-2. Open the app:
-   `open dist/RadioGlass.app`
-
-## Xcode project details
-
-- Project: `RadioGlass.xcodeproj`
-- Shared scheme: `RadioGlass.xcodeproj/xcshareddata/xcschemes/RadioGlass.xcscheme`
-- Info plist: `App/Info.plist`
-- Entitlements: `App/RadioGlass.entitlements`
-- Enabled capability baseline:
-  - App Sandbox
-  - Outgoing Network Connections (`com.apple.security.network.client`)
+- `Sources/RadioGlass/Theme/` liquid‑glass styling helpers
+- `App/Assets.xcassets/` dynamic app icon assets
 
 ## Notes
 
-- This uses the public Radio Browser API endpoint:
-  `https://de1.api.radio-browser.info/json`
-- Production hardening still needed: retries, better artwork fallback, stream health checks, and richer queue/session handling.
+- Uses the public Radio Browser API endpoints.
+- Dynamic icon compilation happens during `./scripts/build-app.sh` when Xcode is available.
