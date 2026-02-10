@@ -1,10 +1,12 @@
 # RadioGlass
 
-RadioGlass is a macOS SwiftUI app inspired by Apple Music, with a liquid-glass visual style and global live radio discovery.
+<p align="left">
+  <img src="radio_icons/Icon-macOS-Default-1024x1024@1x.png" alt="Glass Radio icon" width="72" height="72" />
+</p>
 
-## App icon
+RadioGlass is a macOS SwiftUI app inspired by Apple Music, with a liquid-glass visual style and global live radio discovery. It brings curated country radio into a single player, with fast search, favorites, and AirPlay support.
 
-![Glass Radio app icon](radio_icons/Icon-macOS-Default-1024x1024@1x.png)
+![RadioGlass screenshot](docs/screenshot-2026-02-10.png)
 
 ## Implemented foundation
 
