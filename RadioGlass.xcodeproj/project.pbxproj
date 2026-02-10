@@ -1,0 +1,342 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		001D610A2A00000100A1B2C3 /* RadioGlassApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607A2A00000100A1B2C3 /* RadioGlassApp.swift */; };
+		001D610B2A00000100A1B2C3 /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607B2A00000100A1B2C3 /* RadioStation.swift */; };
+		001D610C2A00000100A1B2C3 /* AudioPlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607C2A00000100A1B2C3 /* AudioPlayerManager.swift */; };
+		001D610D2A00000100A1B2C3 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607D2A00000100A1B2C3 /* FavoritesStore.swift */; };
+		001D610E2A00000100A1B2C3 /* RadioBrowserService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607E2A00000100A1B2C3 /* RadioBrowserService.swift */; };
+		001D610F2A00000100A1B2C3 /* LiquidGlassStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D607F2A00000100A1B2C3 /* LiquidGlassStyle.swift */; };
+		001D61102A00000100A1B2C3 /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60802A00000100A1B2C3 /* AppViewModel.swift */; };
+		001D61112A00000100A1B2C3 /* AirPlayRoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60812A00000100A1B2C3 /* AirPlayRoutePicker.swift */; };
+		001D61122A00000100A1B2C3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60822A00000100A1B2C3 /* ContentView.swift */; };
+		001D61132A00000100A1B2C3 /* FeaturedStationCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60832A00000100A1B2C3 /* FeaturedStationCardView.swift */; };
+		001D61142A00000100A1B2C3 /* PlayerBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60842A00000100A1B2C3 /* PlayerBarView.swift */; };
+		001D61152A00000100A1B2C3 /* StationRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60852A00000100A1B2C3 /* StationRowView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		001D606A2A00000100A1B2C3 /* RadioGlass.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RadioGlass.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		001D60792A00000100A1B2C3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = App/Info.plist; sourceTree = SOURCE_ROOT; };
+		001D60902A00000100A1B2C3 /* RadioGlass.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App/RadioGlass.entitlements; sourceTree = SOURCE_ROOT; };
+		001D607A2A00000100A1B2C3 /* RadioGlassApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/RadioGlassApp.swift; sourceTree = SOURCE_ROOT; };
+		001D607B2A00000100A1B2C3 /* RadioStation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Models/RadioStation.swift; sourceTree = SOURCE_ROOT; };
+		001D607C2A00000100A1B2C3 /* AudioPlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Services/AudioPlayerManager.swift; sourceTree = SOURCE_ROOT; };
+		001D607D2A00000100A1B2C3 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Services/FavoritesStore.swift; sourceTree = SOURCE_ROOT; };
+		001D607E2A00000100A1B2C3 /* RadioBrowserService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Services/RadioBrowserService.swift; sourceTree = SOURCE_ROOT; };
+		001D607F2A00000100A1B2C3 /* LiquidGlassStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Theme/LiquidGlassStyle.swift; sourceTree = SOURCE_ROOT; };
+		001D60802A00000100A1B2C3 /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/ViewModels/AppViewModel.swift; sourceTree = SOURCE_ROOT; };
+		001D60812A00000100A1B2C3 /* AirPlayRoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/AirPlayRoutePicker.swift; sourceTree = SOURCE_ROOT; };
+		001D60822A00000100A1B2C3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/ContentView.swift; sourceTree = SOURCE_ROOT; };
+		001D60832A00000100A1B2C3 /* FeaturedStationCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/FeaturedStationCardView.swift; sourceTree = SOURCE_ROOT; };
+		001D60842A00000100A1B2C3 /* PlayerBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/PlayerBarView.swift; sourceTree = SOURCE_ROOT; };
+		001D60852A00000100A1B2C3 /* StationRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/StationRowView.swift; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		001D606D2A00000100A1B2C3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		001D605D2A00000100A1B2C3 = {
+			isa = PBXGroup;
+			children = (
+				001D606E2A00000100A1B2C3 /* Sources */,
+				001D608F2A00000100A1B2C3 /* App */,
+				001D605F2A00000100A1B2C3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		001D605F2A00000100A1B2C3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				001D606A2A00000100A1B2C3 /* RadioGlass.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		001D606E2A00000100A1B2C3 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				001D607A2A00000100A1B2C3 /* RadioGlassApp.swift */,
+				001D60702A00000100A1B2C3 /* Models */,
+				001D60712A00000100A1B2C3 /* Services */,
+				001D60722A00000100A1B2C3 /* Theme */,
+				001D60732A00000100A1B2C3 /* ViewModels */,
+				001D60742A00000100A1B2C3 /* Views */,
+			);
+			path = Sources/RadioGlass;
+			sourceTree = SOURCE_ROOT;
+		};
+		001D60702A00000100A1B2C3 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				001D607B2A00000100A1B2C3 /* RadioStation.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		001D60712A00000100A1B2C3 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				001D607C2A00000100A1B2C3 /* AudioPlayerManager.swift */,
+				001D607D2A00000100A1B2C3 /* FavoritesStore.swift */,
+				001D607E2A00000100A1B2C3 /* RadioBrowserService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		001D60722A00000100A1B2C3 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				001D607F2A00000100A1B2C3 /* LiquidGlassStyle.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		001D60732A00000100A1B2C3 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				001D60802A00000100A1B2C3 /* AppViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		001D60742A00000100A1B2C3 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				001D60812A00000100A1B2C3 /* AirPlayRoutePicker.swift */,
+				001D60822A00000100A1B2C3 /* ContentView.swift */,
+				001D60832A00000100A1B2C3 /* FeaturedStationCardView.swift */,
+				001D60842A00000100A1B2C3 /* PlayerBarView.swift */,
+				001D60852A00000100A1B2C3 /* StationRowView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		001D608F2A00000100A1B2C3 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				001D60792A00000100A1B2C3 /* Info.plist */,
+				001D60902A00000100A1B2C3 /* RadioGlass.entitlements */,
+			);
+			path = App;
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		001D60692A00000100A1B2C3 /* RadioGlass */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 001D60962A00000100A1B2C3 /* Build configuration list for PBXNativeTarget "RadioGlass" */;
+			buildPhases = (
+				001D606C2A00000100A1B2C3 /* Sources */,
+				001D606D2A00000100A1B2C3 /* Frameworks */,
+				001D606F2A00000100A1B2C3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RadioGlass;
+			productName = RadioGlass;
+			productReference = 001D606A2A00000100A1B2C3 /* RadioGlass.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		001D605C2A00000100A1B2C3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					001D60692A00000100A1B2C3 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 001D60922A00000100A1B2C3 /* Build configuration list for PBXProject "RadioGlass" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 001D605D2A00000100A1B2C3;
+			productRefGroup = 001D605F2A00000100A1B2C3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				001D60692A00000100A1B2C3 /* RadioGlass */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		001D606F2A00000100A1B2C3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		001D606C2A00000100A1B2C3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				001D610A2A00000100A1B2C3 /* RadioGlassApp.swift in Sources */,
+				001D610B2A00000100A1B2C3 /* RadioStation.swift in Sources */,
+				001D610C2A00000100A1B2C3 /* AudioPlayerManager.swift in Sources */,
+				001D610D2A00000100A1B2C3 /* FavoritesStore.swift in Sources */,
+				001D610E2A00000100A1B2C3 /* RadioBrowserService.swift in Sources */,
+				001D610F2A00000100A1B2C3 /* LiquidGlassStyle.swift in Sources */,
+				001D61102A00000100A1B2C3 /* AppViewModel.swift in Sources */,
+				001D61112A00000100A1B2C3 /* AirPlayRoutePicker.swift in Sources */,
+				001D61122A00000100A1B2C3 /* ContentView.swift in Sources */,
+				001D61132A00000100A1B2C3 /* FeaturedStationCardView.swift in Sources */,
+				001D61142A00000100A1B2C3 /* PlayerBarView.swift in Sources */,
+				001D61152A00000100A1B2C3 /* StationRowView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		001D60932A00000100A1B2C3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		001D60942A00000100A1B2C3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		001D60972A00000100A1B2C3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.radioglass.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		001D60982A00000100A1B2C3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.radioglass.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		001D60922A00000100A1B2C3 /* Build configuration list for PBXProject "RadioGlass" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				001D60932A00000100A1B2C3 /* Debug */,
+				001D60942A00000100A1B2C3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		001D60962A00000100A1B2C3 /* Build configuration list for PBXNativeTarget "RadioGlass" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				001D60972A00000100A1B2C3 /* Debug */,
+				001D60982A00000100A1B2C3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 001D605C2A00000100A1B2C3 /* Project object */;
+}

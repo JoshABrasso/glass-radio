@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Radio}",
+            "name": "Debug RadioGlass",
+            "target": "RadioGlass",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug RadioGlass"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Radio}",
+            "name": "Release RadioGlass",
+            "target": "RadioGlass",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release RadioGlass"
+        }
+    ]
+}
