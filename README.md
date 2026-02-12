@@ -10,10 +10,12 @@ RadioGlass is a macOS SwiftUI app inspired by Apple Music, with a liquid-glass v
 ![Main screen](docs/main-station-page.png)
 ![Search](docs/search-stations.png)
 
-### Feature highlights
-- Quick search pop-down shows live matches and plays instantly. <img src="docs/quick-search-small.png" alt="Quick search" width="260" style="vertical-align:middle;margin-left:8px;" />
-- Player bar stays centered with throughput meter and volume/AirPlay controls. <img src="docs/player-section-small.png" alt="Player bar" width="260" style="vertical-align:middle;margin-left:8px;" />
-- AirPlay routing is one click away from the main player. <img src="docs/airplay-section-small.png" alt="AirPlay" width="220" style="vertical-align:middle;margin-left:8px;" />
+## Feature highlights
+| Feature | Preview |
+| --- | --- |
+| Quick search pop-down shows live matches and plays instantly | ![Quick search](docs/quick-search-small.png) |
+| Player bar stays centered with throughput meter and volume/AirPlay controls | ![Player bar](docs/player-section-small.png) |
+| AirPlay routing is one click away from the main player | ![AirPlay](docs/airplay-section-small.png) |
 
 ## Download
 
