@@ -5,11 +5,11 @@ actor StationLogoProvider {
 
     private let fileManager = FileManager.default
     private let cacheDirectory: URL
+    private let maxCacheBytes: Int64 = 2_500_000_000
 
     init() {
-        let base = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        cacheDirectory = base.appendingPathComponent("RadioGlassLogos", isDirectory: true)
-        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+        AppAssetStore.ensureDirectories()
+        cacheDirectory = AppAssetStore.stationLogosDirectory
     }
 
     func logoData(for station: RadioStation) async -> Data? {
@@ -30,9 +30,16 @@ actor StationLogoProvider {
                 guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
                     continue
                 }
+
+                // Basic validation to avoid caching HTML/error responses as images.
+                if let mime = http.value(forHTTPHeaderField: "Content-Type")?.lowercased(),
+                   !(mime.contains("image")) {
+                    continue
+                }
                 guard data.count > 256 else { continue }
 
                 try? data.write(to: diskURL, options: .atomic)
+                await enforceCacheLimitIfNeeded()
                 return data
             } catch {
                 continue
@@ -65,14 +72,51 @@ actor StationLogoProvider {
             if let duck = URL(string: "https://icons.duckduckgo.com/ip3/\(host).ico") {
                 urls.append(duck)
             }
-            if let google = URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=256") {
+            if let google = URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=512") {
                 urls.append(google)
             }
             if let iconHorse = URL(string: "https://icon.horse/icon/\(host)") {
                 urls.append(iconHorse)
             }
+            if let clearbit = URL(string: "https://logo.clearbit.com/\(host)?size=512") {
+                urls.append(clearbit)
+            }
         }
 
         return urls
+    }
+
+    private func enforceCacheLimitIfNeeded() async {
+        let fm = fileManager
+        let cacheDir = cacheDirectory
+        let maxBytes = maxCacheBytes
+
+        let entries = await Task.detached(priority: .utility) {
+            guard let files = try? fm.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey], options: [.skipsHiddenFiles]) else {
+                return (Int64(0), [(url: URL, size: Int64, date: Date)]())
+            }
+
+            var total: Int64 = 0
+            var items: [(url: URL, size: Int64, date: Date)] = []
+            for fileURL in files {
+                guard let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
+                      let size = values.fileSize,
+                      let date = values.contentModificationDate else { continue }
+                let size64 = Int64(size)
+                total += size64
+                items.append((fileURL, size64, date))
+            }
+            return (total, items)
+        }.value
+
+        var remaining = entries.0
+        guard remaining > maxBytes else { return }
+
+        let sorted = entries.1.sorted { $0.date < $1.date }
+        for entry in sorted {
+            try? fm.removeItem(at: entry.url)
+            remaining -= entry.size
+            if remaining <= maxBytes { break }
+        }
     }
 }

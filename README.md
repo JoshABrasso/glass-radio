@@ -6,7 +6,14 @@
 
 RadioGlass is a macOS SwiftUI app inspired by Apple Music, with a liquid-glass visual style and global live radio discovery. It brings curated country radio into a single player, with fast search, favorites, and AirPlay support.
 
-![RadioGlass screenshot](docs/screenshot-2026-02-10.png)
+## Screenshots
+![Main screen](docs/main-station-page.png)
+![Search](docs/search-stations.png)
+
+### Feature highlights
+- Quick search pop-down shows live matches and plays instantly. <img src="docs/quick-search-small.png" alt="Quick search" width="260" style="vertical-align:middle;margin-left:8px;" />
+- Player bar stays centered with throughput meter and volume/AirPlay controls. <img src="docs/player-section-small.png" alt="Player bar" width="260" style="vertical-align:middle;margin-left:8px;" />
+- AirPlay routing is one click away from the main player. <img src="docs/airplay-section-small.png" alt="AirPlay" width="220" style="vertical-align:middle;margin-left:8px;" />
 
 ## Download
 
@@ -32,6 +39,12 @@ https://github.com/JoshABrasso/glass-radio/releases/tag/radioglass-mac
 - Now Playing metadata integration (`MPNowPlayingInfoCenter`)
 - Media key / Control Center command support (`MPRemoteCommandCenter`)
 - App-level playback command menu and handoff activity metadata
+
+## What’s new (2026-02-11)
+- Quick search drop-down now plays a station on click and keeps results visible after Enter.
+- Full search updates live under the search bar with a clear/reset control; results stay at the top of the pane.
+- Player bar refinements: fixed-width regions, centered controls, single-line throughput pill, compact height.
+- Side panes use larger, bolder text; preset reordering is working again.
 
 ## Project layout
 

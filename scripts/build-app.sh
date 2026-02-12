@@ -20,6 +20,7 @@ BUILT_WITH_XCODE=0
 cd "$ROOT_DIR"
 
 echo "Building release app..."
+mkdir -p "$DIST_DIR"
 rm -rf "$APP_DIR"
 
 if xcrun xcodebuild -version >/dev/null 2>&1; then

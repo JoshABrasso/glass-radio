@@ -5,63 +5,77 @@ struct PlayerBarView: View {
     @ObservedObject var player: AudioPlayerManager
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(alignment: .center, spacing: 18) {
             leftNowPlaying
-            Spacer(minLength: 16)
-            centerTransport
-            Spacer(minLength: 16)
+                .frame(width: 340, alignment: .leading)
+                .frame(height: 44, alignment: .center)
+
+            HStack(spacing: 18) {
+                centerTransport
+                StreamStatusView(
+                    level: player.meterLevel,
+                    throughputKbps: player.streamThroughputKbps,
+                    fallbackBitrateKbps: player.streamBitrateKbps
+                )
+                .frame(width: 150, alignment: .leading)
+            }
+            .frame(width: 360, alignment: .center)
+
             rightControls
+                .frame(width: 240, alignment: .trailing)
+                .frame(height: 44, alignment: .center)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
+        .frame(height: 52, alignment: .center)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 4)
         .playerPanel()
     }
 
     private var leftNowPlaying: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 9) {
             if let station = viewModel.nowPlayingStation ?? viewModel.player.currentStation {
                 StationArtworkView(station: station, cornerRadius: 4)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 38, height: 38)
 
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(station.name)
-                        .font(.caption.weight(.semibold))
+                        .font(.callout.weight(.semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                     Text(station.country)
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.58))
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.62))
                         .lineLimit(1)
                 }
                 
                 Button(action: { viewModel.togglePreset(station) }) {
                     Image(systemName: viewModel.isPreset(station) ? "star.fill" : "star")
-                        .font(.caption)
-                        .foregroundStyle(viewModel.isPreset(station) ? .yellow : .white.opacity(0.7))
+                        .font(.body)
+                        .foregroundStyle(viewModel.isPreset(station) ? .yellow : .white.opacity(0.75))
                 }
                 .buttonStyle(.plain)
             } else {
                 Text("No Station")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(.callout)
+                    .foregroundStyle(.white.opacity(0.72))
             }
         }
-        .frame(width: 250, alignment: .leading)
+        .frame(width: 340, alignment: .leading)
     }
 
     private var centerTransport: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             Button(action: { viewModel.playPrevious() }) {
                 Image(systemName: "backward.fill")
-                    .font(.caption)
+                    .font(.body)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.white.opacity(0.82))
 
             Button(action: { viewModel.player.togglePlayback() }) {
                 Image(systemName: viewModel.player.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.caption.weight(.bold))
-                    .frame(width: 26, height: 26)
+                    .font(.body.weight(.bold))
+                    .frame(width: 32, height: 32)
                     .background(.white, in: Circle())
                     .foregroundStyle(.black)
             }
@@ -69,57 +83,47 @@ struct PlayerBarView: View {
 
             Button(action: { viewModel.playNext() }) {
                 Image(systemName: "forward.fill")
-                    .font(.caption)
+                    .font(.body)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.white.opacity(0.82))
 
-            if player.isConnecting {
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(.white.opacity(0.82))
-            } else if player.isPlaying || player.streamBitrateKbps != nil || player.streamThroughputKbps != nil {
-                StreamStatusView(
-                    level: player.meterLevel,
-                    bitrateKbps: player.streamBitrateKbps,
-                    throughputKbps: player.streamThroughputKbps
-                )
-            }
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var rightControls: some View {
         HStack(spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "speaker.fill")
-                    .font(.caption2)
+                    .font(.body)
                     .foregroundStyle(.white.opacity(0.62))
 
                 Slider(value: Binding(
                     get: { Double(player.volume) },
                     set: { player.volume = Float($0) }
                 ), in: 0...1)
-                .frame(width: 84)
+                .frame(width: 120)
                 .tint(.white.opacity(0.82))
             }
 
             if player.isExternalPlaybackActive {
                 Image(systemName: "airplayaudio")
-                    .font(.caption2)
+                    .font(.body)
                     .foregroundStyle(.blue.opacity(0.9))
             }
 
             AirPlayRoutePicker()
-                .frame(width: 24, height: 18)
+                .frame(width: 26, height: 20)
         }
-        .frame(width: 250, alignment: .trailing)
+        .frame(width: 240, alignment: .trailing)
     }
 }
 
 private struct StreamStatusView: View {
     let level: Float
-    let bitrateKbps: Int?
     let throughputKbps: Int?
+    let fallbackBitrateKbps: Int?
 
     var body: some View {
         HStack(spacing: 6) {
@@ -134,12 +138,15 @@ private struct StreamStatusView: View {
             }
 
             Text(labelText)
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.7))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(Color.white.opacity(0.10), in: Capsule())
+        .fixedSize()
     }
 
     private func barHeight(for index: Int, time: TimeInterval) -> CGFloat {
@@ -151,8 +158,12 @@ private struct StreamStatusView: View {
     }
 
     private var labelText: String {
-        let bitrate = bitrateKbps.map { "Bitrate \($0) kbps" } ?? "Bitrate --"
-        let throughput = throughputKbps.map { "Throughput \($0) kbps" } ?? "Throughput --"
-        return "\(bitrate) • \(throughput)"
+        if let throughput = throughputKbps {
+            return "\(throughput) kbps"
+        } else if let bitrate = fallbackBitrateKbps {
+            return "\(bitrate) kbps"
+        } else {
+            return "-- kbps"
+        }
     }
 }

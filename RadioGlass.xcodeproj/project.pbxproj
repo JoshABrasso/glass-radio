@@ -28,6 +28,7 @@
 		001D61132A00000100A1B2C3 /* FeaturedStationCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60832A00000100A1B2C3 /* FeaturedStationCardView.swift */; };
 		001D61142A00000100A1B2C3 /* PlayerBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60842A00000100A1B2C3 /* PlayerBarView.swift */; };
 		001D61152A00000100A1B2C3 /* StationRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D60852A00000100A1B2C3 /* StationRowView.swift */; };
+		00A1B2C3D1A1E01700A1B2C3 /* AppAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A1B2C3D1A1E00017A1B2C3 /* AppAssetStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		00A1B2C3D1A1E00014A1B2C3 /* WindowConfigurator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Views/WindowConfigurator.swift; sourceTree = SOURCE_ROOT; };
 		00A1B2C3D1A1E00015A1B2C3 /* StationLogoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Services/StationLogoProvider.swift; sourceTree = SOURCE_ROOT; };
 		00A1B2C3D1A1E00016A1B2C3 /* SystemVolumeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Services/SystemVolumeController.swift; sourceTree = SOURCE_ROOT; };
+		00A1B2C3D1A1E00017A1B2C3 /* AppAssetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RadioGlass/Services/AppAssetStore.swift; sourceTree = SOURCE_ROOT; };
 		001D606A2A00000100A1B2C3 /* RadioGlass.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RadioGlass.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		001D60792A00000100A1B2C3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = App/Info.plist; sourceTree = SOURCE_ROOT; };
 		001D60902A00000100A1B2C3 /* RadioGlass.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App/RadioGlass.entitlements; sourceTree = SOURCE_ROOT; };
@@ -113,6 +115,7 @@
 				001D607C2A00000100A1B2C3 /* AudioPlayerManager.swift */,
 				001D607D2A00000100A1B2C3 /* FavoritesStore.swift */,
 				001D607E2A00000100A1B2C3 /* RadioBrowserService.swift */,
+				00A1B2C3D1A1E00017A1B2C3 /* AppAssetStore.swift */,
 				00A1B2C3D1A1E00015A1B2C3 /* StationLogoProvider.swift */,
 				00A1B2C3D1A1E00016A1B2C3 /* SystemVolumeController.swift */,
 			);
@@ -239,6 +242,7 @@
 				00A1B2C3D1A1E01400A1B2C3 /* WindowConfigurator.swift in Sources */,
 				00A1B2C3D1A1E01500A1B2C3 /* StationLogoProvider.swift in Sources */,
 				00A1B2C3D1A1E01600A1B2C3 /* SystemVolumeController.swift in Sources */,
+				00A1B2C3D1A1E01700A1B2C3 /* AppAssetStore.swift in Sources */,
 				001D610A2A00000100A1B2C3 /* RadioGlassApp.swift in Sources */,
 				001D610B2A00000100A1B2C3 /* RadioStation.swift in Sources */,
 				001D610C2A00000100A1B2C3 /* AudioPlayerManager.swift in Sources */,

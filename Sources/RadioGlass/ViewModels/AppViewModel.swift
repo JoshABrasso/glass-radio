@@ -207,8 +207,14 @@ final class AppViewModel: ObservableObject {
         var id: String { rawValue }
     }
 
+    struct BrandCluster: Identifiable {
+        let id: String
+        let name: String
+        let stations: [RadioStation]
+    }
+
     @Published var presets: [RadioStation] = []
-    @Published var selectedCountry = CountryPreset.all.first ?? CountryPreset(id: "uk", displayName: "United Kingdom", apiName: "United Kingdom", topBrands: [])
+    @Published var selectedCountry: CountryPreset
 
     @Published var countryTopStations: [RadioStation] = []
     @Published var countryAllStations: [RadioStation] = []
@@ -218,8 +224,10 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var countryStationCount = 0
 
     @Published var discoverStations: [RadioStation] = []
-    @Published var searchText = ""
-    @Published var searchResults: [RadioStation] = []
+    @Published var quickSearchText = ""
+    @Published var quickSearchResults: [RadioStation] = []
+    @Published var searchPageQuery = ""
+    @Published var searchPageResults: [RadioStation] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var countryInfoMessage: String?
@@ -239,13 +247,31 @@ final class AppViewModel: ObservableObject {
     private var majorBrandScoreById: [String: Int] = [:]
     private var countryCache: [String: CountrySnapshot] = [:]
     private var activeCountryLoadToken = UUID()
+    private var quickSearchToken = UUID()
+    private var searchPageToken = UUID()
+    private var quickSearchTask: Task<Void, Never>?
+    private var searchPageTask: Task<Void, Never>?
     private var backgroundCacheTask: Task<Void, Never>?
     private var recentCountryIDs: [String] = []
     private let initialCacheKey = "GlassRadio.InitialCacheComplete"
+    private let selectedCountryKey = "GlassRadio.SelectedCountryID"
+    private let failedCacheKey = "GlassRadio.FailedInitialCacheCounts"
+    private let maxInitialCacheRetries = 5
+    private var failedInitialCacheCounts: [String: Int] = [:]
 
     init(service: RadioServing = RadioBrowserService()) {
         self.service = service
+        AppAssetStore.ensureDirectories()
+        AppAssetStore.copyBundledFlagsIfNeeded()
         self.presets = store.load()
+        self.failedInitialCacheCounts = Self.loadFailedCacheCounts(key: failedCacheKey)
+        let savedID = UserDefaults.standard.string(forKey: selectedCountryKey)
+        let fallback = CountryPreset.all.first ?? CountryPreset(id: "uk", displayName: "United Kingdom", apiName: "United Kingdom", topBrands: [])
+        if let savedID, let savedCountry = CountryPreset.all.first(where: { $0.id == savedID }) {
+            self.selectedCountry = savedCountry
+        } else {
+            self.selectedCountry = fallback
+        }
         if !UserDefaults.standard.bool(forKey: initialCacheKey) {
             Task {
                 await performInitialCache()
@@ -293,24 +319,77 @@ final class AppViewModel: ObservableObject {
     }
     
     var genreButtons: [String] {
-        let canonicalGenres = ["All", "Pop", "Alternative", "Dance", "R&B", "Hip-Hop", "Rock", "Classic Rock", "Electronic", "Jazz", "Classical", "News", "Talk"]
-        return canonicalGenres.filter { genre in
+        let baseGenres = [
+            "All", "80s", "90s", "Adult Contemporary", "Alternative", "Ambient", "Blues", "Classical",
+            "Classic Rock", "Country", "Dance", "Disco", "Drum & Bass", "EDM", "Electronic", "Folk",
+            "Funk", "Gospel", "Hip-Hop", "House", "Indie", "Jazz", "Latin", "Lounge", "Metal",
+            "News", "Oldies", "Pop", "R&B", "Reggae", "Rock", "Soul", "Sports", "Talk", "Top 40", "Urban"
+        ]
+        let expanded = baseGenres + countrySpecificGenres(for: selectedCountry)
+        var ordered: [String] = []
+        for genre in expanded where !ordered.contains(genre) {
+            ordered.append(genre)
+        }
+        let filtered = ordered.filter { genre in
             if genre == "All" { return true }
             return countryAllStations.contains { station in
                 station.genres.contains { normalizeGenre($0).localizedCaseInsensitiveContains(genre) }
             }
         }
+        let rest = filtered.filter { $0 != "All" }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        return ["All"] + rest
     }
 
     func setSort(_ sort: StationSort) { selectedSort = sort }
     func setFilter(_ filter: StationFilter) { selectedFilter = filter }
     func setGenre(_ genre: String) { selectedGenre = genre }
 
+    private func countrySpecificGenres(for country: CountryPreset) -> [String] {
+        switch country.id {
+        case "uk":
+            return ["Grime", "Garage", "Drum & Bass"]
+        case "us":
+            return ["Americana", "Bluegrass", "Gospel", "Country"]
+        case "es":
+            return ["Urban", "Latin", "Flamenco"]
+        case "fr":
+            return ["Chanson"]
+        case "de":
+            return ["Schlager"]
+        case "it":
+            return ["Italo Disco"]
+        case "jp":
+            return ["J-Pop", "City Pop"]
+        case "kr":
+            return ["K-Pop"]
+        case "in":
+            return ["Bollywood"]
+        case "br":
+            return ["Sertanejo", "Samba", "Bossa Nova"]
+        case "mx":
+            return ["Regional", "Banda", "Norteño"]
+        case "ar":
+            return ["Tango"]
+        case "ng":
+            return ["Afrobeats"]
+        case "za":
+            return ["Amapiano"]
+        case "ie":
+            return ["Celtic"]
+        case "au":
+            return ["Aussie Rock"]
+        default:
+            return []
+        }
+    }
+
     func loadCountry(_ country: CountryPreset) async {
         let loadToken = UUID()
         activeCountryLoadToken = loadToken
         recordRecentCountry(country.id)
         selectedCountry = country
+        UserDefaults.standard.set(country.id, forKey: selectedCountryKey)
         selectedSort = .alphabetical
         selectedFilter = .all
         selectedGenre = "All"
@@ -371,18 +450,75 @@ final class AppViewModel: ObservableObject {
         discoverStations = uniqueById(merged)
     }
 
-    func performSearch() async {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            searchResults = []
+    func performQuickSearch(for text: String? = nil, limit: Int = 80) async {
+        let trimmed = (text ?? quickSearchText).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            quickSearchResults = []
             return
         }
 
+        let token = UUID()
+        quickSearchToken = token
+
         do {
-            searchResults = try await service.searchStations(query: searchText, limit: 120)
+            let results = try await service.searchStations(query: trimmed, limit: limit)
+            guard quickSearchToken == token else { return }
+            quickSearchResults = results
         } catch {
+            guard quickSearchToken == token else { return }
             errorMessage = "Search failed."
-            searchResults = []
+            quickSearchResults = []
         }
+    }
+
+    func scheduleQuickSearch() {
+        quickSearchTask?.cancel()
+        let current = quickSearchText
+        quickSearchTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 260_000_000) // ~0.26s debounce
+            await self?.performQuickSearch(for: current, limit: 60)
+        }
+    }
+
+    func performSearchPageQuery(for text: String? = nil, limit: Int = 160) async {
+        let trimmed = (text ?? searchPageQuery).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            searchPageResults = []
+            return
+        }
+
+        let token = UUID()
+        searchPageToken = token
+
+        do {
+            let results = try await service.searchStations(query: trimmed, limit: limit)
+            guard searchPageToken == token else { return }
+            searchPageResults = results
+        } catch {
+            guard searchPageToken == token else { return }
+            errorMessage = "Search failed."
+            searchPageResults = []
+        }
+    }
+
+    func scheduleSearchPageQuery() {
+        searchPageTask?.cancel()
+        let current = searchPageQuery
+        searchPageTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 320_000_000) // ~0.32s debounce
+            await self?.performSearchPageQuery(for: current)
+        }
+    }
+
+    func commitQuickSearch() async {
+        let trimmed = quickSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            quickSearchResults = []
+            return
+        }
+        await performQuickSearch(for: trimmed)
+        searchPageQuery = trimmed
+        await performSearchPageQuery(for: trimmed)
     }
 
     func togglePreset(_ station: RadioStation) {
@@ -391,6 +527,11 @@ final class AppViewModel: ObservableObject {
         } else {
             presets.append(station)
         }
+        store.save(presets)
+    }
+
+    func movePresets(from offsets: IndexSet, to destination: Int) {
+        presets.move(fromOffsets: offsets, toOffset: destination)
         store.save(presets)
     }
 
@@ -509,6 +650,62 @@ final class AppViewModel: ObservableObject {
         }
 
         return base.sorted { popularity($0) > popularity($1) }
+    }
+
+    func brandClusters(for query: String) -> [BrandCluster] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 3 else { return [] }
+        let target = normalizeStationName(trimmed)
+        guard !target.isEmpty else { return [] }
+
+        let base = searchPageResults.isEmpty ? countryAllStations : searchPageResults
+        let filtered = base.filter { normalizeStationName($0.name).contains(target) }
+        guard !filtered.isEmpty else { return [] }
+
+        var grouped: [String: [RadioStation]] = [:]
+        for station in filtered {
+            let key = canonicalStationName(station.name)
+            grouped[key, default: []].append(station)
+        }
+
+        let clusters = grouped.values.compactMap { stations -> BrandCluster? in
+            let sortedStations = stations.sorted { popularity($0) > popularity($1) }
+            guard let primary = sortedStations.first else { return nil }
+            return BrandCluster(id: primary.id, name: primary.name, stations: sortedStations)
+        }
+
+        return clusters
+            .sorted { popularity($0.stations[0]) > popularity($1.stations[0]) }
+            .prefix(6)
+            .map { $0 }
+    }
+
+    func stationsForFilter(_ filter: StationFilter, limit: Int) -> [RadioStation] {
+        var base = countryAllStations
+        switch filter {
+        case .all:
+            break
+        case .presetsOnly:
+            base = base.filter { presets.contains($0) }
+        case .withArtwork:
+            base = base.filter { !($0.favicon?.isEmpty ?? true) }
+        case .majorBrands:
+            base = base.filter { matchesMajorBrand($0) }
+        case .withGenres:
+            base = base.filter { !$0.genres.isEmpty }
+        }
+        let sorted = base.sorted { popularity($0) > popularity($1) }
+        return Array(sorted.prefix(limit))
+    }
+
+    func topStationsByCountryPreview(maxCountries: Int = 12, perCountry: Int = 1) -> [(CountryPreset, [RadioStation])] {
+        var result: [(CountryPreset, [RadioStation])] = []
+        for country in CountryPreset.all {
+            guard let snapshot = countryCache[country.id], !snapshot.topStations.isEmpty else { continue }
+            result.append((country, Array(snapshot.topStations.prefix(perCountry))))
+            if result.count >= maxCountries { break }
+        }
+        return result
     }
     
     private func normalizeGenre(_ raw: String) -> String {
@@ -676,24 +873,39 @@ final class AppViewModel: ObservableObject {
         let total = max(1, countries.count)
 
         for (index, country) in countries.enumerated() {
+            if let failed = failedInitialCacheCounts[country.id], failed >= maxInitialCacheRetries {
+                await MainActor.run {
+                    initialLoadingMessage = "Skipping \(country.displayName)…"
+                    initialLoadingProgress = Double(index) / Double(total)
+                }
+                continue
+            }
             await MainActor.run {
                 initialLoadingMessage = "Caching \(country.displayName)..."
                 initialLoadingProgress = Double(index) / Double(total)
             }
 
             do {
-                let stations = try await service.fetchCountryStations(
-                    country: country.apiName,
-                    countryCode: country.countryCode,
-                    limit: 2000
-                )
-                async let major = fetchMajorBrandStations(for: country)
-                async let regional = fetchRegionalStations(for: country)
-                let merged = stations + (try await major) + (try await regional)
+                let merged = try await withTimeout(seconds: 28) { [service, self] in
+                    let stations = try await service.fetchCountryStations(
+                        country: country.apiName,
+                        countryCode: country.countryCode,
+                        limit: 1800
+                    )
+                    async let major = self.fetchMajorBrandStations(for: country)
+                    async let regional = self.fetchRegionalStations(for: country)
+                    return stations + (try await major) + (try await regional)
+                }
                 await storeSnapshot(merged, for: country)
-                await prefetchLogos(for: Array(merged.prefix(40)))
+                Task.detached(priority: .background) { [self] in
+                    await self.prefetchLogos(for: Array(merged.prefix(20)))
+                }
+                await updateFailedCacheCount(countryID: country.id, success: true)
             } catch {
-                continue
+                await MainActor.run {
+                    initialLoadingMessage = "Skipping \(country.displayName)…"
+                }
+                await updateFailedCacheCount(countryID: country.id, success: false)
             }
             await Task.yield()
         }
@@ -756,8 +968,19 @@ final class AppViewModel: ObservableObject {
 
     private func quickRefreshAtLaunch() async {
         let seed = await MainActor.run { selectedCountry }
+        let localeRegion = Locale.current.region?.identifier.lowercased()
+        let localeCountry = CountryPreset.all.first { preset in
+            preset.id == localeRegion || preset.countryCode.lowercased() == localeRegion
+        }
+        let retryCandidates = failedInitialCacheCounts
+            .filter { $0.value < maxInitialCacheRetries }
+            .compactMap { id, _ in CountryPreset.all.first { $0.id == id } }
         var countries = [seed]
+        if let localeCountry {
+            countries.append(localeCountry)
+        }
         countries.append(contentsOf: CountryPreset.all.prefix(3))
+        countries.append(contentsOf: retryCandidates)
         let unique = Array(Set(countries.map(\.id))).compactMap { id in
             CountryPreset.all.first { $0.id == id }
         }
@@ -772,10 +995,19 @@ final class AppViewModel: ObservableObject {
         let total = max(1, unique.count)
         for country in unique {
             do {
-                let stations = try await service.fetchCountryStations(country: country.apiName, countryCode: country.countryCode, limit: 400)
+                let timeout = retryCandidates.contains(country) ? 60.0 : 28.0
+                let stations = try await withTimeout(seconds: timeout) { [service] in
+                    try await service.fetchCountryStations(country: country.apiName, countryCode: country.countryCode, limit: 600)
+                }
                 await storeSnapshot(stations, for: country)
                 await prefetchLogos(for: Array(stations.prefix(16)))
+                if retryCandidates.contains(country) {
+                    await updateFailedCacheCount(countryID: country.id, success: true)
+                }
             } catch {
+                if retryCandidates.contains(country) {
+                    await updateFailedCacheCount(countryID: country.id, success: false)
+                }
                 continue
             }
             await MainActor.run {
@@ -786,6 +1018,45 @@ final class AppViewModel: ObservableObject {
         await MainActor.run {
             isBackgroundRefreshing = false
         }
+    }
+
+    private func withTimeout<T>(seconds: Double, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw URLError(.timedOut)
+            }
+
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
+    }
+
+    private func updateFailedCacheCount(countryID: String, success: Bool) async {
+        if success {
+            failedInitialCacheCounts.removeValue(forKey: countryID)
+        } else {
+            let current = failedInitialCacheCounts[countryID] ?? 0
+            failedInitialCacheCounts[countryID] = current + 1
+        }
+        Self.saveFailedCacheCounts(failedInitialCacheCounts, key: failedCacheKey)
+    }
+
+    private static func loadFailedCacheCounts(key: String) -> [String: Int] {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([String: Int].self, from: data) else {
+            return [:]
+        }
+        return decoded
+    }
+
+    private static func saveFailedCacheCounts(_ counts: [String: Int], key: String) {
+        guard let data = try? JSONEncoder().encode(counts) else { return }
+        UserDefaults.standard.set(data, forKey: key)
     }
 
     private func prefetchLogos(for stations: [RadioStation]) async {

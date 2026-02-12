@@ -33,14 +33,23 @@ struct ContentView: View {
                     window.isMovable = true
                     window.styleMask = [.titled, .resizable, .miniaturizable, .closable]
                     window.titleVisibility = .visible
-                    window.titlebarAppearsTransparent = false
+                    window.titlebarAppearsTransparent = true
                 }
             )
-            .searchable(text: $viewModel.quickSearchText, placement: .toolbar, prompt: tab == .countries ? "Quick search stations" : "Quick search")
+            .searchable(text: $viewModel.quickSearchText, placement: .toolbar, prompt: tab == .countries ? "Quick search stations" : "Quick search") {
+                ForEach(viewModel.quickSearchResults.prefix(8)) { station in
+                    SearchSuggestionRow(station: station) {
+                        viewModel.play(station, in: viewModel.quickSearchResults)
+                    }
+                }
+            }
+            .onChange(of: viewModel.quickSearchText) { _ in
+                viewModel.scheduleQuickSearch()
+            }
+            .toolbarBackground(.clear, for: .windowToolbar)
             .onSubmit(of: .search) {
                 Task {
-                    await viewModel.performQuickSearch()
-                    tab = .search
+                    await viewModel.commitQuickSearch()
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -86,16 +95,16 @@ struct ContentView: View {
             isEditingPresets.toggle()
         }
         .buttonStyle(.plain)
-        .font(.caption2)
-        .foregroundStyle(.white.opacity(0.6))
+        .font(.callout.weight(.semibold))
+        .foregroundStyle(.white.opacity(0.72))
     }
 
     private var leftSidebar: some View {
         List {
             Section {
                 Text("Library")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.62))
             }
 
             Section {
@@ -107,8 +116,8 @@ struct ContentView: View {
             Section {
                 HStack {
                     Text("Preset Stations")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.75))
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.82))
                     Spacer()
                     presetsEditButton
                 }
@@ -117,7 +126,7 @@ struct ContentView: View {
             Section {
                 if viewModel.presets.isEmpty {
                     Text("Star stations to add presets")
-                        .font(.caption)
+                        .font(.callout)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(viewModel.presets) { station in
@@ -126,10 +135,10 @@ struct ContentView: View {
                         } label: {
                             HStack(spacing: 6) {
                                 StationArtworkView(station: station, cornerRadius: 4)
-                                    .frame(width: 16, height: 16)
+                                    .frame(width: 18, height: 18)
 
                                 Text(station.name)
-                                    .font(.footnote)
+                                    .font(.callout.weight(.semibold))
                                     .lineLimit(1)
 
                                 Spacer()
@@ -137,7 +146,7 @@ struct ContentView: View {
                                 if viewModel.isCurrentStation(station) {
                                     Image(systemName: "speaker.wave.2.fill")
                                         .foregroundStyle(.red)
-                                        .font(.caption)
+                                        .font(.callout)
                                 }
                             }
                         }
@@ -150,7 +159,7 @@ struct ContentView: View {
                 }
             }
         }
-        .environment(\.defaultMinListRowHeight, 24)
+        .environment(\.defaultMinListRowHeight, 26)
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(Color.black.opacity(0.30))
@@ -162,9 +171,9 @@ struct ContentView: View {
         } label: {
             HStack(spacing: 7) {
                 Image(systemName: icon)
-                    .font(.caption)
+                    .font(.callout)
                 Text(title)
-                    .font(.footnote)
+                    .font(.callout.weight(.semibold))
                 Spacer()
             }
             .foregroundStyle(self.tab == tab ? Color.red : .white.opacity(0.86))
@@ -382,6 +391,19 @@ struct ContentView: View {
                         TextField("Search by station, city, or frequency", text: $viewModel.searchPageQuery)
                             .textFieldStyle(.plain)
                             .foregroundStyle(.white)
+                            .onChange(of: viewModel.searchPageQuery) { _ in
+                                viewModel.scheduleSearchPageQuery()
+                            }
+                        if !viewModel.searchPageQuery.isEmpty {
+                            Button {
+                                viewModel.searchPageQuery = ""
+                                viewModel.searchPageResults = []
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.white.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
+                        }
                         Button("Search") {
                             Task { await viewModel.performSearchPageQuery() }
                         }
@@ -406,6 +428,37 @@ struct ContentView: View {
                             SearchSuggestionChip(title: suggestion) {
                                 viewModel.searchPageQuery = suggestion
                                 Task { await viewModel.performSearchPageQuery() }
+                            }
+                        }
+                    }
+                }
+
+                // Primary live search results
+                if !viewModel.searchPageQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if !brandClusters.isEmpty {
+                        SearchGlassCard(title: "Station Channels", subtitle: "Related sub-brands and streams") {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    ForEach(brandClusters) { cluster in
+                                        SearchBrandCard(cluster: cluster) { station in
+                                            viewModel.play(station, in: cluster.stations)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+
+                    SearchGlassCard(title: "Search Results", subtitle: "Results for \"\(viewModel.searchPageQuery)\"") {
+                        LazyVStack(spacing: 6) {
+                            ForEach(viewModel.searchPageResults) { station in
+                                CountryStationRowView(
+                                    station: station,
+                                    isPreset: viewModel.isPreset(station),
+                                    onPlay: { viewModel.play(station, in: viewModel.searchPageResults) },
+                                    onTogglePreset: { viewModel.togglePreset(station) }
+                                )
                             }
                         }
                     }
@@ -496,40 +549,10 @@ struct ContentView: View {
                         }
                     }
                 }
-
-                if !viewModel.searchPageQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    if !brandClusters.isEmpty {
-                        SearchGlassCard(title: "Station Channels", subtitle: "Related sub-brands and streams") {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(brandClusters) { cluster in
-                                        SearchBrandCard(cluster: cluster) { station in
-                                            viewModel.play(station, in: cluster.stations)
-                                        }
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        }
-                    }
-
-                    SearchGlassCard(title: "Search Results", subtitle: "Results for \"\(viewModel.searchPageQuery)\"") {
-                        LazyVStack(spacing: 6) {
-                            ForEach(viewModel.searchPageResults) { station in
-                                CountryStationRowView(
-                                    station: station,
-                                    isPreset: viewModel.isPreset(station),
-                                    onPlay: { viewModel.play(station, in: viewModel.searchPageResults) },
-                                    onTogglePreset: { viewModel.togglePreset(station) }
-                                )
-                            }
-                        }
-                    }
-                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 10)
-            .padding(.bottom, 24)
+            .padding(.bottom, 240) // extra clearance so the last row stays above the player bar
         }
     }
 
@@ -566,7 +589,7 @@ struct ContentView: View {
                         } label: {
                             HStack {
                                 Text("\(flagEmoji(for: country.countryCode)) \(country.displayName)")
-                                    .font(.footnote)
+                                    .font(.callout.weight(.semibold))
                                     .lineLimit(1)
                                 Spacer()
                             }
@@ -603,7 +626,7 @@ struct ContentView: View {
                                     .frame(width: 26, height: 26)
 
                                 Text(station.name)
-                                    .font(.footnote)
+                                    .font(.callout.weight(.semibold))
                                     .lineLimit(1)
                                 Spacer()
                             }
@@ -1210,6 +1233,33 @@ private struct SearchSuggestionChip: View {
     }
 }
 
+private struct SearchSuggestionRow: View {
+    let station: RadioStation
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                StationArtworkView(station: station, cornerRadius: 6)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(station.name)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(station.country)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 private func flagEmoji(for code: String) -> String {
     let base: UInt32 = 0x1F1E6
     let scalars = code.uppercased().unicodeScalars.compactMap { scalar -> UnicodeScalar? in
@@ -1376,62 +1426,64 @@ private struct SearchCountryCard: View {
     let code: String
     let action: () -> Void
 
+    private let cardWidth: CGFloat = 180
+    private var cardHeight: CGFloat { cardWidth / 1.65 }
+
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .bottomLeading) {
+            ZStack {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color.white.opacity(0.06))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-                    )
 
                 if let url = flagImageResourceURL(code: code) ?? flagImageURL(code: code, width: 640) {
                     AsyncImage(url: url) { phase in
                         if let image = phase.image {
                             image
                                 .resizable()
-                                .scaledToFill()
-                                .saturation(1.05)
-                                .opacity(0.9)
+                                .aspectRatio(1.65, contentMode: .fill)
                         } else {
                             Color.white.opacity(0.02)
                         }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
+                    .frame(width: cardWidth, height: cardHeight)
                 }
 
                 LinearGradient(
                     colors: [
-                        Color.clear,
-                        Color.black.opacity(0.18),
-                        Color.black.opacity(0.45)
+                        Color.black.opacity(0.05),
+                        Color.black.opacity(0.28),
+                        Color.black.opacity(0.5)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                VStack {
-                    Spacer()
+            }
+            .frame(width: cardWidth, height: cardHeight)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .overlay(alignment: .bottomLeading) {
+                HStack {
                     Text(title)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-                        )
-                        .padding(8)
                 }
+                .frame(height: 30)
+                .padding(.horizontal, 10)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                )
+                .padding(.horizontal, 10)
+                .padding(.bottom, 8)
             }
-            .frame(width: 180, height: 110)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
     }
