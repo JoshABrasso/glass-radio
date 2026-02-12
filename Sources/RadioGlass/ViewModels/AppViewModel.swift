@@ -188,23 +188,37 @@ final class AppViewModel: ObservableObject {
     }
 
     enum StationSort: String, CaseIterable, Identifiable {
-        case alphabetical = "A-Z"
-        case mostPopular = "Most Popular"
-        case mostListened = "Most Listened"
-        case majorBrandsFirst = "Major Brands First"
-        case leastPopular = "Least Popular"
+        case alphabetical = "A–Z"
+        case popularity = "Most Popular"
+        case trending = "Most Listened"
+        case bitrateHigh = "Highest Bitrate"
+        case bitrateLow = "Lowest Bitrate"
+        case favoritesFirst = "Favorites First"
+        case networksFirst = "Networks First"
 
         var id: String { rawValue }
     }
     
     enum StationFilter: String, CaseIterable, Identifiable {
-        case all = "All"
-        case presetsOnly = "Presets"
-        case withArtwork = "With Artwork"
-        case majorBrands = "Major Brands"
-        case withGenres = "With Genres"
+        case all = "All Stations"
+        case presetsOnly = "Favorites"
+        case popular = "Popular Picks"
+        case reliable = "Stable Streams"
+        case majorBrands = "Big Networks"
+        case withGenres = "Genre Tagged"
 
         var id: String { rawValue }
+
+        var subtitle: String {
+            switch self {
+            case .all: return "Everything in the current country"
+            case .presetsOnly: return "Just the stations you’ve starred"
+            case .popular: return "Top voted and most clicked"
+            case .reliable: return "Streams with steady play history"
+            case .majorBrands: return "Large national and global broadcasters"
+            case .withGenres: return "Stations with reliable genre tags"
+            }
+        }
     }
 
     struct BrandCluster: Identifiable {
@@ -296,8 +310,10 @@ final class AppViewModel: ObservableObject {
             break
         case .presetsOnly:
             base = base.filter { presets.contains($0) }
-        case .withArtwork:
-            base = base.filter { !($0.favicon?.isEmpty ?? true) }
+        case .popular:
+            base = Array(base.sorted { weightedPopularity($0) > weightedPopularity($1) }.prefix(400))
+        case .reliable:
+            base = base.filter { reliabilityScore($0) >= 50 }
         case .majorBrands:
             base = base.filter { matchesMajorBrand($0) }
         case .withGenres:
@@ -307,14 +323,28 @@ final class AppViewModel: ObservableObject {
         switch selectedSort {
         case .alphabetical:
             return base.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        case .mostPopular:
+        case .popularity:
             return base.sorted { weightedPopularity($0) > weightedPopularity($1) }
-        case .mostListened:
-            return base.sorted { ($0.clickcount ?? 0) > ($1.clickcount ?? 0) }
-        case .majorBrandsFirst:
-            return base.sorted { majorBrandPriority($0) > majorBrandPriority($1) }
-        case .leastPopular:
-            return base.sorted { popularity($0) < popularity($1) }
+        case .trending:
+            return base.sorted { clickCount($0) > clickCount($1) }
+        case .bitrateHigh:
+            return base.sorted { inferredBitrate(for: $0) > inferredBitrate(for: $1) }
+        case .bitrateLow:
+            return base.sorted { inferredBitrate(for: $0) < inferredBitrate(for: $1) }
+        case .favoritesFirst:
+            return base.sorted {
+                let lhsFav = presets.contains($0) ? 1 : 0
+                let rhsFav = presets.contains($1) ? 1 : 0
+                if lhsFav != rhsFav { return lhsFav > rhsFav }
+                return weightedPopularity($0) > weightedPopularity($1)
+            }
+        case .networksFirst:
+            return base.sorted {
+                let lhsBrand = majorBrandPriority($0)
+                let rhsBrand = majorBrandPriority($1)
+                if lhsBrand != rhsBrand { return lhsBrand > rhsBrand }
+                return weightedPopularity($0) > weightedPopularity($1)
+            }
         }
     }
     
@@ -344,6 +374,29 @@ final class AppViewModel: ObservableObject {
     func setSort(_ sort: StationSort) { selectedSort = sort }
     func setFilter(_ filter: StationFilter) { selectedFilter = filter }
     func setGenre(_ genre: String) { selectedGenre = genre }
+
+    private func inferredBitrate(for station: RadioStation) -> Int {
+        let patterns = ["(\\d{2,3})\\s*k", "(\\d{2,3})\\s*kbps", "(\\d{2,3})\\s*kbit"]
+        for pattern in patterns {
+            if let match = station.name.range(of: pattern, options: [.regularExpression, .caseInsensitive]) {
+                let number = station.name[match].replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
+                if let value = Int(number) { return value }
+            }
+        }
+        return 128
+    }
+
+    private func reliabilityScore(_ station: RadioStation) -> Int {
+        let clicks = (station.clickcount ?? 0)
+        let votes = (station.votes ?? 0)
+        let hasURL = !(station.urlResolved.isEmpty) || !(station.url?.isEmpty ?? true)
+        let base = votes + clicks
+        return base + (hasURL ? 20 : 0)
+    }
+
+    private func clickCount(_ station: RadioStation) -> Int {
+        station.clickcount ?? 0
+    }
 
     private func countrySpecificGenres(for country: CountryPreset) -> [String] {
         switch country.id {
@@ -517,8 +570,6 @@ final class AppViewModel: ObservableObject {
             return
         }
         await performQuickSearch(for: trimmed)
-        searchPageQuery = trimmed
-        await performSearchPageQuery(for: trimmed)
     }
 
     func togglePreset(_ station: RadioStation) {
@@ -687,8 +738,10 @@ final class AppViewModel: ObservableObject {
             break
         case .presetsOnly:
             base = base.filter { presets.contains($0) }
-        case .withArtwork:
-            base = base.filter { !($0.favicon?.isEmpty ?? true) }
+        case .popular:
+            base = Array(base.sorted { weightedPopularity($0) > weightedPopularity($1) }.prefix(400))
+        case .reliable:
+            base = base.filter { reliabilityScore($0) >= 50 }
         case .majorBrands:
             base = base.filter { matchesMajorBrand($0) }
         case .withGenres:

@@ -3,9 +3,9 @@ import SwiftUI
 
 struct ContentView: View {
     enum Tab: String, CaseIterable, Identifiable {
-        case countries = "Country Picks"
+        case countries = "Home"
         case search = "Search"
-        case discover = "Discover"
+        case discover = "Browse"
         var id: String { rawValue }
     }
 
@@ -108,9 +108,9 @@ struct ContentView: View {
             }
 
             Section {
-                sidebarItem("Country Picks", tab: .countries, icon: "globe")
+                sidebarItem("Home", tab: .countries, icon: "house")
                 sidebarItem("Search", tab: .search, icon: "magnifyingglass")
-                sidebarItem("Discover", tab: .discover, icon: "sparkles")
+                sidebarItem("Browse", tab: .discover, icon: "sparkles")
             }
 
             Section {
@@ -239,9 +239,9 @@ struct ContentView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Text("Top Stations In \(viewModel.selectedCountry.displayName)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.88))
+                        Text("Top Stations in \(viewModel.selectedCountry.displayName)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.88))
                 
                 Text("\(viewModel.countryStationCount) stations")
                     .font(.caption2)
@@ -477,7 +477,7 @@ struct ContentView: View {
                     }
                 }
 
-                ForEach([AppViewModel.StationFilter.majorBrands, .withArtwork, .withGenres, .presetsOnly]) { filter in
+                ForEach([AppViewModel.StationFilter.majorBrands, .withGenres, .presetsOnly]) { filter in
                     let stations = viewModel.stationsForFilter(filter, limit: 10)
                     if !stations.isEmpty {
                         SearchGlassCard(title: filter.rawValue, subtitle: "A focused slice of the catalog") {
@@ -535,20 +535,6 @@ struct ContentView: View {
                     }
                 }
 
-                if !viewModel.quickSearchResults.isEmpty {
-                    SearchGlassCard(title: "Quick Search Results", subtitle: "From the top-right quick search") {
-                        LazyVStack(spacing: 6) {
-                            ForEach(viewModel.quickSearchResults) { station in
-                                CountryStationRowView(
-                                    station: station,
-                                    isPreset: viewModel.isPreset(station),
-                                    onPlay: { viewModel.play(station, in: viewModel.quickSearchResults) },
-                                    onTogglePreset: { viewModel.togglePreset(station) }
-                                )
-                            }
-                        }
-                    }
-                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 10)
