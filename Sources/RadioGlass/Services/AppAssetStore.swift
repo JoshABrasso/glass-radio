@@ -34,16 +34,16 @@ enum AppAssetStore {
         let fm = FileManager.default
 
 #if SWIFT_PACKAGE
-        guard let bundleURL = Bundle.module.url(forResource: "Flags", withExtension: nil) else { return }
+        // SwiftPM builds don’t bundle Flags; skip silently.
+        return
 #else
         guard let bundleURL = Bundle.main.url(forResource: "Flags", withExtension: nil) else { return }
-#endif
-
         guard let items = try? fm.contentsOfDirectory(at: bundleURL, includingPropertiesForKeys: nil) else { return }
         for item in items where item.pathExtension.lowercased() == "png" {
             let dest = flagsDirectory.appendingPathComponent(item.lastPathComponent)
             if fm.fileExists(atPath: dest.path) { continue }
             try? fm.copyItem(at: item, to: dest)
         }
+#endif
     }
 }

@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @main
-struct RadioGlassApp: App {
+struct GlassRadioApp: App {
     @StateObject private var viewModel = AppViewModel()
 
     var body: some Scene {

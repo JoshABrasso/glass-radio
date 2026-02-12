@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "001D60692A00000100A1B2C3"
-               BuildableName = "RadioGlass.app"
+               BuildableName = "GlassRadio.app"
                BlueprintName = "RadioGlass"
                ReferencedContainer = "container:RadioGlass.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "001D60692A00000100A1B2C3"
-            BuildableName = "RadioGlass.app"
+            BuildableName = "GlassRadio.app"
             BlueprintName = "RadioGlass"
             ReferencedContainer = "container:RadioGlass.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "001D60692A00000100A1B2C3"
-            BuildableName = "RadioGlass.app"
+            BuildableName = "GlassRadio.app"
             BlueprintName = "RadioGlass"
             ReferencedContainer = "container:RadioGlass.xcodeproj">
          </BuildableReference>

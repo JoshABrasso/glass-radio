@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "RadioGlass",
+    name: "GlassRadio",
     platforms: [
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "RadioGlass", targets: ["RadioGlass"])
+        .executable(name: "GlassRadio", targets: ["RadioGlass"])
     ],
     targets: [
         .executableTarget(

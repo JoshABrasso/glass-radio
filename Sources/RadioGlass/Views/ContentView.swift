@@ -43,7 +43,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .onChange(of: viewModel.quickSearchText) { _ in
+            .onChange(of: viewModel.quickSearchText, initial: false) { _, _ in
                 viewModel.scheduleQuickSearch()
             }
             .toolbarBackground(.clear, for: .windowToolbar)
@@ -391,7 +391,7 @@ struct ContentView: View {
                         TextField("Search by station, city, or frequency", text: $viewModel.searchPageQuery)
                             .textFieldStyle(.plain)
                             .foregroundStyle(.white)
-                            .onChange(of: viewModel.searchPageQuery) { _ in
+                            .onChange(of: viewModel.searchPageQuery, initial: false) { _, _ in
                                 viewModel.scheduleSearchPageQuery()
                             }
                         if !viewModel.searchPageQuery.isEmpty {
@@ -1264,7 +1264,8 @@ private func flagImageResourceURL(code: String) -> URL? {
         return fromSupport
     }
 #if SWIFT_PACKAGE
-    return Bundle.module.url(forResource: lowercased, withExtension: "png", subdirectory: "Flags")
+    // SwiftPM builds do not embed flag assets.
+    return nil
 #else
     return Bundle.main.url(forResource: lowercased, withExtension: "png", subdirectory: "Flags")
 #endif

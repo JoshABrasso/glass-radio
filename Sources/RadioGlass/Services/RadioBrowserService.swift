@@ -99,7 +99,7 @@ final class RadioBrowserService: RadioServing {
             var request = URLRequest(url: url)
             request.timeoutInterval = 12
             request.cachePolicy = .returnCacheDataElseLoad
-            request.setValue("RadioGlass/2.0", forHTTPHeaderField: "User-Agent")
+            request.setValue("GlassRadio/2.0", forHTTPHeaderField: "User-Agent")
 
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)

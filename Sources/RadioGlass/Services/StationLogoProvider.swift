@@ -24,7 +24,7 @@ actor StationLogoProvider {
             do {
                 var request = URLRequest(url: url)
                 request.timeoutInterval = 8
-                request.setValue("RadioGlass/2.0", forHTTPHeaderField: "User-Agent")
+                request.setValue("GlassRadio/2.0", forHTTPHeaderField: "User-Agent")
 
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {

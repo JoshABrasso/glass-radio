@@ -19,6 +19,26 @@
             "target": "RadioGlass",
             "configuration": "release",
             "preLaunchTask": "swift: Build Release RadioGlass"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Radio}",
+            "name": "Debug GlassRadio",
+            "target": "GlassRadio",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug GlassRadio"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Radio}",
+            "name": "Release GlassRadio",
+            "target": "GlassRadio",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release GlassRadio"
         }
     ]
 }
