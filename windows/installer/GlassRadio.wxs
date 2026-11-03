@@ -3,7 +3,7 @@
   <Package
     Name="Glass Radio"
     Manufacturer="Glass Radio"
-    Version="1.0.2.0"
+    Version="1.0.1.0"
     Language="1033"
     UpgradeCode="8B5B5D4A-3D51-4C40-9EA5-5B5D7F2B9C18"
     Scope="perUserOrMachine"

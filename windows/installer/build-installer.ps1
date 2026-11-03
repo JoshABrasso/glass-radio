@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $workspace = Split-Path -Parent $PSScriptRoot
-$buildRoot = "D:\Devalopment\Windows\Glass-Radio-Build"
+$buildRoot = "C:\GlassRadio-Build"
 $runId = Get-Date -Format "yyyyMMdd-HHmmss"
 $runRoot = Join-Path $buildRoot "installer-$runId"
 $publishDir = Join-Path $runRoot "publish\github-win-x64"
@@ -16,8 +16,8 @@ $balExtension = Join-Path $balPackageRoot "wixext7\WixToolset.BootstrapperApplic
 $solution = Join-Path $workspace "GlassRadio.Windows.sln"
 $wxs = Join-Path $PSScriptRoot "GlassRadio.wxs"
 $bundleWxs = Join-Path $PSScriptRoot "GlassRadio-Setup.wxs"
-$msi = Join-Path $outputDir "GlassRadio-1.0.2-x64.msi"
-$setup = Join-Path $outputDir "GlassRadio-Setup-1.0.2-x64.exe"
+$msi = Join-Path $outputDir "GlassRadio-1.0.1-x64.msi"
+$setup = Join-Path $outputDir "GlassRadio-Setup-1.0.1-x64.exe"
 New-Item -ItemType Directory -Force -Path $publishDir, $outputDir | Out-Null
 if (-not (Test-Path -LiteralPath $wix)) { throw "WiX toolset was not found at the external tooling path: $wix" }
 
