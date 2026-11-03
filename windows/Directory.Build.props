@@ -1,13 +1,13 @@
 <Project>
   <PropertyGroup>
-    <BuildRoot Condition="'$(BuildRoot)' == ''">C:\GlassRadio-Build</BuildRoot>
+    <BuildRoot Condition="'$(BuildRoot)' == ''">$(UserProfile)\GlassRadio-Build</BuildRoot>
     <BaseOutputPath>$(BuildRoot)\artifacts\bin\$(MSBuildProjectName)\</BaseOutputPath>
     <BaseIntermediateOutputPath>$(BuildRoot)\artifacts\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version Condition="'$(Version)' == ''">1.0.1</Version>
-    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">1.0.1.0</AssemblyVersion>
-    <FileVersion Condition="'$(FileVersion)' == ''">1.0.1.0</FileVersion>
+    <Version Condition="'$(Version)' == ''">1.0.2</Version>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">1.0.2.0</AssemblyVersion>
+    <FileVersion Condition="'$(FileVersion)' == ''">1.0.2.0</FileVersion>
     <LangVersion>13.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <DebugType>portable</DebugType>

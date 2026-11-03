@@ -282,17 +282,22 @@ public sealed partial class MainWindow : Window
         ApplyExploreViewportMetrics(e.NewSize.Width);
     }
 
-    private void ApplyExploreViewportMetrics(double viewportWidth)
+    private void ApplyExploreViewportMetrics(double outerWidth)
     {
-        // Use the ScrollViewer's measured viewport, not its outer arranged width. The latter
-        // includes the vertical scrollbar when it is visible and was the source of the recurring
-        // left/right drift: a centered child was being centered against a width that was not
-        // actually available to the Explore content. The fallback keeps the first measure pass
-        // deterministic before WinUI has populated ViewportWidth.
-        var measuredViewportWidth = ExploreScrollViewer.ViewportWidth > 0
-            ? ExploreScrollViewer.ViewportWidth
-            : viewportWidth;
-        var effectiveViewportWidth = Math.Max(320, measuredViewportWidth);
+        // Deliberately NOT ExploreScrollViewer.ViewportWidth. ViewportWidth shrinks whenever the
+        // vertical scrollbar is showing, and the scrollbar's visibility depends on this method's
+        // own output: it sets ExploreCategoryColumns/Rows below, which sets the category grid's
+        // content height, which determines whether a scrollbar is needed at all. Reading
+        // ViewportWidth here closed that loop - a SizeChanged pass could change the column count,
+        // which changed content height, which toggled the scrollbar, which changed ViewportWidth,
+        // which re-fired SizeChanged - a real oscillation, not a one-off glitch, that made Explore
+        // fight the user's scroll input instead of just scrolling. The outer width this replaced
+        // it with is stable: it comes from the window/pane size, not from this control's own
+        // content, so it cannot feed back into itself. Always reserving a scrollbar-sized gutter
+        // (whether or not a scrollbar is actually showing) keeps centering correct without
+        // reintroducing the left/right drift a fixed-but-unreserved outer width caused before.
+        const double ReservedScrollbarGutter = 16;
+        var effectiveViewportWidth = Math.Max(320, outerWidth - ReservedScrollbarGutter);
         var boundedWidth = Math.Min(1600, effectiveViewportWidth);
         // Give the centering frame the exact viewport width. Without an explicit arranged
         // width, ScrollViewer can measure the frame at its desired size and leave the bounded
