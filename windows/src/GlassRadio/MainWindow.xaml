@@ -417,47 +417,6 @@
          </Grid>
         </ScrollViewer>
 
-        <Grid Grid.Column="1" Margin="12,0,12,12" RowSpacing="{ThemeResource GlassSectionSpacing}" Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Discover}">
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-             <Border Padding="{ThemeResource GlassPanelPadding}" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="10">
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel><TextBlock Text="Discover" FontSize="20" FontWeight="SemiBold" /><TextBlock Text="Cross-country highlights and popular stations." Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel>
-                    <Button Grid.Column="1" Content="Load Discover" Command="{Binding DiscoverCommand}" HorizontalAlignment="Right" AutomationProperties.Name="Load discover stations" />
-                </Grid>
-            </Border>
-             <Grid Grid.Row="1">
-              <GridView Padding="{ThemeResource GlassCollectionPadding}" ItemsSource="{Binding DiscoverResults}" SelectionMode="None" HorizontalContentAlignment="Center" AutomationProperties.Name="Discover stations" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollMode="Enabled">
-                 <GridView.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" HorizontalAlignment="Center" MaximumRowsOrColumns="{Binding DataContext.FeaturedGridColumns, ElementName=Root}" /></ItemsPanelTemplate></GridView.ItemsPanel>
-                 <GridView.ItemTemplate>
-                     <DataTemplate>
-                         <Border Width="{Binding TopCardWidth}" Padding="8" Margin="0,0,10,10" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="10">
-                             <Border.ContextFlyout><MenuFlyout><MenuFlyoutItem Text="Copy station name" Tag="{Binding Station}" Click="CopyStationName_Click" /><MenuFlyoutItem Text="Open station website" Tag="{Binding Station}" Click="OpenStationWebsite_Click" /></MenuFlyout></Border.ContextFlyout>
-                             <Grid RowSpacing="6">
-                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                 <Border Height="{Binding TopCardWidth}" Background="{Binding ArtworkBrush}" CornerRadius="8"><Grid>
-                                     <TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="28" FontWeight="SemiBold" Foreground="White" />
-                                     <Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Station artwork" />
-                                     <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,6,0,0" Padding="{ThemeResource GlassBadgePadding}" CornerRadius="10" Background="{ThemeResource GlassLiveBrush}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" Canvas.ZIndex="2" IsHitTestVisible="False"><TextBlock Text="LIVE" FontSize="10" FontWeight="SemiBold" Foreground="White" /></Border>
-                                     <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6" Width="34" Height="34" CornerRadius="17" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><Button Style="{StaticResource GlassRoundIconButton}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="StationPlay_Click" Tag="{Binding Station}" AutomationProperties.Name="{Binding PlayAutomationName}" ToolTipService.ToolTip="Play station"><FontIcon Glyph="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" /></Button></Border>
-                                     <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6" Width="34" Height="34" CornerRadius="17" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><Button Style="{StaticResource GlassRoundIconButton}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Command="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}" CommandParameter="{Binding Station}" AutomationProperties.Name="{Binding FavoriteAutomationName}" ToolTipService.ToolTip="Toggle favourite"><FontIcon Glyph="{Binding FavoriteGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="20" Margin="-2,-2,2,2" /></Button></Border>
-                                 </Grid></Border>
-                                 <TextBlock Grid.Row="1" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                 <TextBlock Grid.Row="2" Text="{Binding Location}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" />
-                             </Grid>
-                         </Border>
-                     </DataTemplate>
-                 </GridView.ItemTemplate>
-             </GridView>
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Visibility="{Binding DiscoverResults.Count, Converter={StaticResource ZeroCountVisibility}}" AutomationProperties.Name="No discover results">
-                <FontIcon Glyph="&#xE722;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" FontSize="28" Foreground="{ThemeResource GlassMutedTextBrush}" />
-                <TextBlock Text="No discover stations loaded" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                <TextBlock Text="Use Load Discover or Retry to try again." Foreground="{ThemeResource GlassMutedTextBrush}" HorizontalAlignment="Center" />
-            </StackPanel>
-            </Grid>
-            <TextBlock Grid.Row="2" Text="{Binding StatusText}" Foreground="{ThemeResource GlassMutedTextBrush}" AutomationProperties.Name="Discover status" />
-        </Grid>
-
         <Border x:Name="CountriesPanel" Grid.Column="2" Margin="0,0,0,12" Padding="{ThemeResource GlassPanelPadding}" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="12">
             <Grid RowSpacing="8">
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>

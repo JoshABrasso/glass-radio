@@ -13,11 +13,7 @@ namespace GlassRadio;
 public enum MainSection
 {
     Home,
-    Explore,
-    // Retained as compatibility values for callers and old automation scripts. The shell now
-    // presents Search and Discover as one Explore destination.
-    Search,
-    Discover
+    Explore
 }
 
 public enum OnboardingStep
@@ -379,6 +375,7 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable, ILocalA
     // Lazily created on first use so no CancellationTokenSource is allocated for sessions where the
     // user never touches the volume slider.
     private CancellationTokenSource? _volumePersistDebounce;
+    private CancellationTokenSource? _volumeEngineDebounce;
 
     partial void OnVolumeChanged(double value)
     {
@@ -386,7 +383,21 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable, ILocalA
         // player behaviour (Windows' own volume flyout does the same) and avoids the confusing case
         // of moving the slider while muted and hearing nothing happen.
         if (IsMuted) { IsMuted = false; return; }
-        _ = _playback.SetVolumeAsync(value, _lifetime.Token);
+
+        // This fires on every 0.01 StepFrequency tick - dozens of times across a single drag.
+        // LibVlcPlaybackEngine.SetVolumeAsync is genuinely synchronous (a direct native
+        // MediaPlayer.Volume property set under a lock, no real await anywhere in its call
+        // chain), so calling it inline here ran that native call, synchronously, on the UI
+        // thread, once per tick - blocking the dispatcher long enough on each one to visibly
+        // stutter the slider's own rendering and the next pointer-move. Throttling to the
+        // latest value every ~30ms (imperceptible as audio lag, well under one video frame)
+        // and applying it off the UI thread via ConfigureAwait(false) keeps the slider fluid
+        // without changing what value ultimately reaches the engine.
+        _volumeEngineDebounce?.Cancel();
+        _volumeEngineDebounce?.Dispose();
+        var engineDebounce = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _volumeEngineDebounce = engineDebounce;
+        _ = ApplyVolumeToEngineAfterDelayAsync(value, engineDebounce.Token);
 
         // The live player Volume and the persisted AppSettings.Volume used to be two completely
         // disconnected values: this handler only ever pushed the new volume to the playback engine,
@@ -423,6 +434,17 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable, ILocalA
         catch (OperationCanceledException) { return; }
         if (cancellationToken.IsCancellationRequested) return;
         await RunOnUiAsync(() => { PersistSettings(); return Task.CompletedTask; }).ConfigureAwait(false);
+    }
+
+    private async Task ApplyVolumeToEngineAfterDelayAsync(double value, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(30), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { return; }
+        if (cancellationToken.IsCancellationRequested) return;
+        await _playback.SetVolumeAsync(value, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -542,9 +564,7 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable, ILocalA
             ShowCountriesPanel = ShowCountriesPanel,
             ShowGenreFilter = ShowGenreFilter,
             AllStationsViewStyle = AllStationsViewStyle,
-            LastActiveSection = ActiveSection is MainSection.Explore or MainSection.Search or MainSection.Discover
-                ? "Explore"
-                : "Home"
+            LastActiveSection = ActiveSection is MainSection.Explore ? "Explore" : "Home"
         }).Normalize();
         _ = _settingsStore.SaveAsync(_settings, _lifetime.Token);
     }
@@ -1517,9 +1537,13 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable, ILocalA
 
     private void StartArtworkLoad(IEnumerable<StationItemViewModel> source)
     {
-        _artworkOperation?.Cancel();
-        _artworkOperation?.Dispose();
-        _artworkOperation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        // Each navigation/search/country-change calls this. A new batch must never cancel an
+        // older one that is still fetching rows the user can still see (e.g. an Explore brand
+        // cluster row that isn't also in whatever surface triggered this call) - that previously
+        // left cards permanently stuck on their initials fallback because the fetch that would
+        // have filled them in was killed before it finished. The token here is shared across every
+        // batch for app lifetime; only ClearArtwork() and shutdown cancel it.
+        _artworkOperation ??= CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         var operation = _artworkOperation;
         // The Mac view loads artwork as cards enter the visible presentation. Starting a
         // request for every station in a large country catalogue makes the Windows UI
@@ -1554,14 +1578,6 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable, ILocalA
         }
         catch (OperationCanceledException) when (operation.IsCancellationRequested) { }
         catch { /* Artwork is optional; the deterministic fallback remains visible. */ }
-        finally
-        {
-            if (ReferenceEquals(_artworkOperation, operation))
-            {
-                _artworkOperation = null;
-                operation.Dispose();
-            }
-        }
     }
 
     private static IReadOnlyList<RadioStation> BuildTopStations(IReadOnlyList<RadioStation> stations, CountryPreset country) =>
@@ -1708,7 +1724,12 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable, ILocalA
 
     public void ClearArtwork()
     {
+        // _artworkOperation is a long-lived, shared token now (see StartArtworkLoad) - once
+        // cancelled it can never un-cancel, so it must be disposed and nulled here, not just
+        // cancelled, or every artwork load after this point would silently no-op forever.
         _artworkOperation?.Cancel();
+        _artworkOperation?.Dispose();
+        _artworkOperation = null;
         foreach (var row in _rowCache.Values) row.ArtworkUri = null;
         NowPlayingArtworkUri = null;
         // Clearing the persistent cache is an explicit user refresh action,

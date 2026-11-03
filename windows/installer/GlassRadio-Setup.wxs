@@ -2,7 +2,7 @@
      xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
   <Bundle
       Name="Glass Radio"
-      Version="1.0.1.0"
+      Version="1.0.2.0"
       Manufacturer="Glass Radio"
       UpgradeCode="7B28C21E-47CE-4B31-8B3D-13D1FE7BDCC1">
     <BootstrapperApplication>
