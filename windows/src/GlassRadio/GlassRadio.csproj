@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.22621.0</TargetPlatformMinVersion>
+    <RootNamespace>GlassRadio</RootNamespace>
+    <AssemblyName>GlassRadio</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnableDefaultPriItems>true</EnableDefaultPriItems>
+    <!-- Real asset from the Mac app's own icon catalogue (Assets.xcassets/glass_radio.appiconset) -
+         it ships only a dark variant, which is what this uses as the Windows default too. -->
+    <ApplicationIcon>Assets\Icons\AppIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <!-- Native libVLC binaries. Referenced here (the published app project), not just from
+         Infrastructure.Windows, so the native runtime assets actually land in the publish output -
+         RuntimeIdentifier=win-x64 above means only the x64 native tree is selected, not x86 too. -->
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GlassRadio.Application\GlassRadio.Application.csproj" />
+    <ProjectReference Include="..\GlassRadio.Infrastructure.Windows\GlassRadio.Infrastructure.Windows.csproj" />
+    <ProjectReference Include="..\GlassRadio.Domain\GlassRadio.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="CopyWinUiXamlResourcesToPublish" AfterTargets="Publish" Condition="'$(WindowsPackageType)' == 'None'">
+    <ItemGroup>
+      <_WinUiXamlPublishResources Include="$(OutputPath)\*.xbf;$(OutputPath)\*.pri" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WinUiXamlPublishResources)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

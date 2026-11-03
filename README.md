@@ -8,7 +8,7 @@ favorites — one app, multiple native platforms.
 | Platform | Status | |
 | --- | --- | --- |
 | macOS | Available | [macos/README.md](macos/README.md) |
-| Windows | In progress | — |
+| Windows | Available | [windows/README.md](windows/README.md) |
 
 ## Download
 

@@ -1,0 +1,96 @@
+<Window
+    x:Class="GlassRadio.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:GlassRadio"
+    Title="Glass Radio Settings">
+    <NavigationView x:Name="SettingsNavigation" IsSettingsVisible="False" IsBackButtonVisible="Collapsed" PaneDisplayMode="Left" SelectionChanged="SettingsNavigation_SelectionChanged" AutomationProperties.Name="Settings sections">
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="Playback" Tag="Playback" IsSelected="True"><NavigationViewItem.Icon><FontIcon Glyph="&#xE767;" FontFamily="Segoe MDL2 Assets" /></NavigationViewItem.Icon></NavigationViewItem>
+            <NavigationViewItem Content="Library" Tag="Library"><NavigationViewItem.Icon><FontIcon Glyph="&#xE734;" FontFamily="Segoe MDL2 Assets" /></NavigationViewItem.Icon></NavigationViewItem>
+            <NavigationViewItem Content="Countries" Tag="Countries"><NavigationViewItem.Icon><FontIcon Glyph="&#xE909;" FontFamily="Segoe MDL2 Assets" /></NavigationViewItem.Icon></NavigationViewItem>
+            <NavigationViewItem Content="API" Tag="Api"><NavigationViewItem.Icon><FontIcon Glyph="&#xE192;" FontFamily="Segoe MDL2 Assets" /></NavigationViewItem.Icon></NavigationViewItem>
+            <NavigationViewItem Content="Content" Tag="Content"><NavigationViewItem.Icon><FontIcon Glyph="&#xE713;" FontFamily="Segoe MDL2 Assets" /></NavigationViewItem.Icon></NavigationViewItem>
+            <NavigationViewItem Content="About" Tag="About"><NavigationViewItem.Icon><FontIcon Glyph="&#xE946;" FontFamily="Segoe MDL2 Assets" /></NavigationViewItem.Icon></NavigationViewItem>
+        </NavigationView.MenuItems>
+        <NavigationView.Content>
+            <ScrollViewer Padding="{ThemeResource GlassDialogPadding}" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel MaxWidth="720" Spacing="18">
+                    <Grid Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Playback}">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Playback" FontSize="28" FontWeight="SemiBold" />
+                            <TextBlock Text="Default playback behaviour for Glass Radio." Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" />
+                            <TextBlock Text="Volume" FontSize="18" FontWeight="SemiBold" Margin="0,10,0,0" />
+                            <Slider Minimum="0" Maximum="1" StepFrequency="0.01" Value="{Binding Volume, Mode=TwoWay}" AutomationProperties.Name="Default volume" />
+                            <Border Padding="{ThemeResource GlassPanelPadding}" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><StackPanel Spacing="8"><TextBlock Text="Stream quality" FontWeight="SemiBold" /><CheckBox Content="Prefer lower bitrate on slow connections" IsChecked="{Binding PreferLowerBitrate, Mode=TwoWay}" AutomationProperties.Name="Prefer lower bitrate on slow connections" /><TextBlock Text="When enabled, Glass Radio tries lower-bitrate retained station variants first." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel></Border>
+                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="130" /></Grid.ColumnDefinitions><TextBlock Text="Connection timeout (seconds)" TextWrapping="Wrap" VerticalAlignment="Center" /><NumberBox Grid.Column="1" HorizontalAlignment="Stretch" Minimum="6" Maximum="30" SpinButtonPlacementMode="Inline" Value="{Binding ConnectionTimeoutSeconds, Mode=TwoWay}" AutomationProperties.Name="Connection timeout" /></Grid>
+                        </StackPanel>
+                    </Grid>
+                    <Grid Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Library}">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Library" FontSize="28" FontWeight="SemiBold" />
+                            <TextBlock Text="Choose the country opened at startup and manage local station data." Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" />
+                            <ComboBox Header="Default country" ItemsSource="{Binding Countries}" SelectedItem="{Binding DefaultCountry, Mode=TwoWay}" DisplayMemberPath="DisplayName" AutomationProperties.Name="Default country" />
+                            <Button Content="Refresh station library now" Command="{Binding RefreshLibraryCommand}" HorizontalAlignment="Left" AutomationProperties.Name="Refresh station library now" />
+                            <Button Content="Clear artwork cache" Command="{Binding ClearArtworkCommand}" HorizontalAlignment="Left" AutomationProperties.Name="Clear artwork cache" />
+                            <Button Content="Reset station library" Command="{Binding ResetLibraryCommand}" HorizontalAlignment="Left" AutomationProperties.Name="Reset station library" />
+                            <Button Content="Clear favourites" Command="{Binding ResetFavoritesCommand}" HorizontalAlignment="Left" AutomationProperties.Name="Clear favourites" />
+                            <Button Content="Clear last played" Command="{Binding ClearLastPlayedCommand}" HorizontalAlignment="Left" AutomationProperties.Name="Clear last played" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Countries}">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Countries" FontSize="28" FontWeight="SemiBold" />
+                            <TextBlock Text="Country station data is cached as you browse. Reset the complete station library from the Library section." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                            <ListView ItemsSource="{Binding Countries}" SelectionMode="None" AutomationProperties.Name="Available countries"><ListView.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal" Spacing="8" Padding="{ThemeResource GlassControlPadding}"><Image Source="{Binding FlagImagePath}" Width="20" Height="14" Stretch="Uniform" VerticalAlignment="Center" /><TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" /></StackPanel></DataTemplate></ListView.ItemTemplate></ListView>
+                        </StackPanel>
+                    </Grid>
+                    <Grid Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Api}">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="API" FontSize="28" FontWeight="SemiBold" />
+                            <TextBlock Text="Optional local control for trusted Glass Radio clients. It is disabled by default and requires an API key." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                            <CheckBox Content="Enable local control API (off by default)" IsChecked="{Binding LocalApiEnabled, Mode=TwoWay}" AutomationProperties.Name="Enable local control API" />
+                            <CheckBox Content="Allow access from other devices on the local network" IsChecked="{Binding LocalApiAllowLanAccess, Mode=TwoWay}" AutomationProperties.Name="Allow local network API access" />
+                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="130" /></Grid.ColumnDefinitions><TextBlock Text="Local API port" TextWrapping="Wrap" VerticalAlignment="Center" /><NumberBox Grid.Column="1" HorizontalAlignment="Stretch" Minimum="1024" Maximum="65535" SpinButtonPlacementMode="Inline" Value="{Binding LocalApiPort, Mode=TwoWay}" AutomationProperties.Name="Local API port" /></Grid>
+                            <TextBox Text="{Binding LocalApiKey, Mode=OneWay}" IsReadOnly="True" Header="API key" AutomationProperties.Name="Local API key" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Content}">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Content" FontSize="28" FontWeight="SemiBold" />
+                            <TextBlock Text="Choose which station categories appear in browse and search." Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" />
+                            <Border Padding="{ThemeResource GlassControlPadding}" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Explore languages" FontWeight="SemiBold" />
+                                    <TextBlock Text="Select every language you want Explore to prefer. Multiple selections are kept together; they are not an overwrite." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                                    <ItemsRepeater ItemsSource="{Binding LanguageOptions}">
+                                        <ItemsRepeater.Layout><UniformGridLayout MaximumRowsOrColumns="4" MinItemWidth="130" MinItemHeight="34" /></ItemsRepeater.Layout>
+                                        <ItemsRepeater.ItemTemplate><DataTemplate><CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" AutomationProperties.Name="{Binding DisplayName}" /></DataTemplate></ItemsRepeater.ItemTemplate>
+                                    </ItemsRepeater>
+                                </StackPanel>
+                            </Border>
+                            <Border Padding="{ThemeResource GlassControlPadding}" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><StackPanel Spacing="4"><CheckBox Content="Religion" IsChecked="{Binding AllowReligiousContent, Mode=TwoWay}" AutomationProperties.Name="Allow religious content" /><TextBlock Text="Allow religious stations in browse and search. Off by default." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel></Border>
+                            <Border Padding="{ThemeResource GlassControlPadding}" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><StackPanel Spacing="4"><CheckBox Content="Football and Sports" IsChecked="{Binding AllowSportsContent, Mode=TwoWay}" AutomationProperties.Name="Allow sports content" /><TextBlock Text="Allow sport, football, match-day, and sports-talk stations. Off by default." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel></Border>
+                            <Border Padding="{ThemeResource GlassControlPadding}" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><StackPanel Spacing="4"><CheckBox Content="News" IsChecked="{Binding AllowNewsContent, Mode=TwoWay}" AutomationProperties.Name="Allow news content" /><TextBlock Text="Allow news-led stations in browse and search." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel></Border>
+                            <TextBlock Text="Top Stations never promotes religious stations. Save settings to apply category changes to the catalogue, search, and Discover." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=About}">
+                        <StackPanel Spacing="16" HorizontalAlignment="Center" MaxWidth="500">
+                            <TextBlock Text="Glass Radio" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock Text="Global radio, calmly arranged." HorizontalAlignment="Center" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                            <Border Height="1" Background="{ThemeResource GlassPanelBorderBrush}" Margin="0,8" />
+                            <TextBlock Text="A personal free and open-source internet-radio application." TextWrapping="Wrap" HorizontalAlignment="Center" />
+                            <TextBlock Text="Station metadata is provided by radio-browser.info. Station artwork is supplied by broadcasters and external services." TextWrapping="Wrap" HorizontalAlignment="Center" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                            <TextBlock Text="Unsigned GitHub FOSS release. No Store, certificate, telemetry, paywall, or closed service is required." TextWrapping="Wrap" HorizontalAlignment="Center" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="12" Padding="{ThemeResource GlassFooterPadding}">
+                        <Button Content="Save settings" Command="{Binding SaveCommand}" AutomationProperties.Name="Save settings" AccessKey="V" />
+                        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Foreground="{ThemeResource GlassMutedTextBrush}" AutomationProperties.Name="Settings status" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </NavigationView.Content>
+    </NavigationView>
+</Window>

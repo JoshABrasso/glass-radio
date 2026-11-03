@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
+    <AssemblyName>GlassRadio.Infrastructure.Windows</AssemblyName>
+    <RootNamespace>GlassRadio.Infrastructure.Windows</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GlassRadio.Application\GlassRadio.Application.csproj" />
+    <ProjectReference Include="..\GlassRadio.Domain\GlassRadio.Domain.csproj" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
+    <!-- Replaces WinRT MediaPlayer/AdaptiveMediaSource as the playback engine - see
+         truth/windows-build-plan.md's 2026-10-02/03 entries for why: Windows Media Foundation's
+         AdaptiveMediaSource cannot open single-rendition live audio HLS streams (confirmed via three
+         independent, instrumented investigation attempts), which is what most BBC stations serve.
+         libVLC has its own mature, self-contained HLS demuxer that doesn't depend on Media
+         Foundation at all - the same approach VLC itself uses. -->
+    <PackageReference Include="LibVLCSharp" Version="3.10.1" />
+  </ItemGroup>
+</Project>

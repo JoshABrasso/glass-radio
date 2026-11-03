@@ -4,3 +4,12 @@ dist/
 DerivedData/
 *.xcuserstate
 *.xcuserdata/
+
+# Windows (.NET/WinUI) build output
+bin/
+obj/
+TestResults/
+*.user
+.vs/
+*.suo
+Thumbs.db

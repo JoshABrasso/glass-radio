@@ -1,0 +1,21 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  <Bundle
+      Name="Glass Radio"
+      Version="1.0.1.0"
+      Manufacturer="Glass Radio"
+      UpgradeCode="7B28C21E-47CE-4B31-8B3D-13D1FE7BDCC1">
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="hyperlinkLicense"
+          LicenseUrl=""
+          SuppressOptionsUI="yes" />
+    </BootstrapperApplication>
+    <Chain>
+      <MsiPackage
+          Id="GlassRadioMsi"
+          SourceFile="$(var.Msi)"
+          Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

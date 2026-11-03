@@ -1,0 +1,693 @@
+<Window
+    x:Class="GlassRadio.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:GlassRadio"
+    Title="Glass Radio">
+    <Grid x:Name="Root" Background="{ThemeResource GlassBackgroundBrush}" Padding="{ThemeResource GlassPagePadding}" SizeChanged="Root_SizeChanged" Loaded="MainWindow_Loaded">
+        <Grid.Resources>
+            <!-- Mac Explore rails use compact artwork-led cards. Keep the action placement
+                 consistent across Featured networks, genre matches, presets, and worldwide picks. -->
+            <DataTemplate x:Key="ExploreStationRailTemplate">
+                <Border Width="178" Height="242" Margin="0,0,12,0" Padding="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="12" IsTapEnabled="True" Tapped="ExploreStation_Tapped" AutomationProperties.Name="Open station details">
+                    <Grid RowSpacing="7">
+                        <Grid.RowDefinitions><RowDefinition Height="158" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <Border Background="{Binding ArtworkBrush}" CornerRadius="9">
+                            <Grid>
+                                <TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24" FontWeight="SemiBold" Foreground="White" />
+                                <Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Station artwork" />
+                                <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="7" Padding="7,3" CornerRadius="10" Background="{ThemeResource GlassLiveBrush}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" IsHitTestVisible="False"><TextBlock Text="LIVE" FontSize="10" FontWeight="SemiBold" Foreground="White" /></Border>
+                                <Button Width="34" Height="34" Padding="0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="7" Background="#CC202020" BorderBrush="#66FFFFFF" BorderThickness="1" Click="StationPlay_Click" Tag="{Binding Station}" AutomationProperties.Name="{Binding PlayAutomationName}" ToolTipService.ToolTip="Play station"><FontIcon Glyph="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="16" /></Button>
+                                <Button Width="34" Height="34" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="7" Background="#CC202020" BorderBrush="#66FFFFFF" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Command="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}" CommandParameter="{Binding Station}" AutomationProperties.Name="{Binding FavoriteAutomationName}" ToolTipService.ToolTip="Toggle favourite"><FontIcon Glyph="{Binding FavoriteGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="19" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-2,-2,2,2" /></Button>
+                            </Grid>
+                        </Border>
+                        <TextBlock Grid.Row="1" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Row="2" Text="{Binding Location}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </Grid.Resources>
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="SearchAccelerator_Invoked" />
+            <KeyboardAccelerator Key="Space" Invoked="PlayPauseAccelerator_Invoked" />
+        </Grid.KeyboardAccelerators>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <!-- Kept as a zero-height overlay row for existing titlebar/onboarding spans. -->
+            <RowDefinition Height="0" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="LeftColumn" Width="220" MinWidth="0" />
+            <ColumnDefinition x:Name="CenterColumn" Width="*" MinWidth="0" />
+            <ColumnDefinition x:Name="RightColumn" Width="260" MinWidth="0" />
+        </Grid.ColumnDefinitions>
+
+        <!-- The Mac app uses a transparent, unified titlebar/toolbar. Keep the native
+             Windows caption buttons, but make the titlebar itself part of Glass Radio. -->
+        <Grid x:Name="AppTitleBar" Grid.RowSpan="2" Grid.ColumnSpan="3" Height="44" VerticalAlignment="Top" Background="{ThemeResource GlassTitleBarBrush}" Canvas.ZIndex="100">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="*" />
+                <!-- Reserve the native caption-button zone when content is extended into the titlebar. -->
+                <ColumnDefinition Width="140" />
+            </Grid.ColumnDefinitions>
+            <!-- The logo/name/view-control cluster below is a SIBLING of this Border, not a
+                 child: anything nested inside the element registered via SetTitleBar() becomes
+                 part of the OS non-client/drag area and stops receiving clicks. QuickSearchBox
+                 already relies on this same sibling-overlap trick (it visually overlaps this
+                 Border's full column span and wins hit-testing by document order). -->
+            <Border x:Name="TitleBarDragRegion" Grid.Column="0" Grid.ColumnSpan="3" Background="Transparent" AutomationProperties.Name="Glass Radio title bar" />
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9" Padding="16,0,0,0" VerticalAlignment="Center">
+                <!-- Non-interactive, so clicking the logo/name still drags the window like before. -->
+                <StackPanel Orientation="Horizontal" Spacing="9" IsHitTestVisible="False">
+                    <Image Source="/Assets/Icons/AppIcon-64.png" Width="20" Height="20" AutomationProperties.Name="Glass Radio icon" />
+                    <TextBlock Text="Glass Radio" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button x:Name="ViewControlButton" Width="30" Height="30" Padding="0" Background="Transparent" AutomationProperties.Name="Home layout options" ToolTipService.ToolTip="Customize Home layout">
+                    <FontIcon Glyph="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <ToggleMenuFlyoutItem Text="Top Stations" IsChecked="{Binding ShowTopStations, Mode=TwoWay}" />
+                            <ToggleMenuFlyoutItem Text="Navigation &amp; Favourites" IsChecked="{Binding ShowFavoritesNav, Mode=TwoWay}" />
+                            <ToggleMenuFlyoutItem Text="Quick Pick Countries" IsChecked="{Binding ShowCountriesPanel, Mode=TwoWay}" />
+                            <ToggleMenuFlyoutItem Text="Genre Filter" IsChecked="{Binding ShowGenreFilter, Mode=TwoWay}" />
+                            <MenuFlyoutSeparator />
+                            <RadioMenuFlyoutItem Text="List view" GroupName="AllStationsStyle" IsChecked="{Binding IsAllStationsListStyle}" Command="{Binding SelectAllStationsViewStyleCommand}" CommandParameter="List" />
+                            <RadioMenuFlyoutItem Text="Grid view" GroupName="AllStationsStyle" IsChecked="{Binding IsAllStationsGridStyle}" Command="{Binding SelectAllStationsViewStyleCommand}" CommandParameter="Grid" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+            <AutoSuggestBox x:Name="QuickSearchBox" Grid.Column="1" Width="300" Margin="0,0,16,0" HorizontalAlignment="Right" VerticalAlignment="Center" PlaceholderText="Quick search stations" Text="{Binding QuickSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding QuickSearchSuggestions}" QuerySubmitted="SearchBox_QuerySubmitted" TextChanged="SearchBox_TextChanged" SuggestionChosen="SearchBox_SuggestionChosen" AutomationProperties.Name="Quick station search">
+                <AutoSuggestBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Padding="{ThemeResource GlassControlPadding}" Spacing="2">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding LocationText}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </DataTemplate>
+                </AutoSuggestBox.ItemTemplate>
+            </AutoSuggestBox>
+        </Grid>
+
+        <Border x:Name="SidebarPanel" Grid.Column="0" Margin="0,0,0,12" Padding="{ThemeResource GlassPanelPadding}" Background="{ThemeResource GlassPanelBrush}"
+                BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="12">
+            <Grid RowSpacing="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <!-- The app name already appears once in the title bar - repeating it here was
+                     redundant, per direct user feedback. -->
+                <Grid HorizontalAlignment="Stretch">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Button Grid.Row="0" HorizontalAlignment="Stretch" AccessKey="H" Style="{StaticResource GlassFlankNavButton}" Command="{Binding NavigateHomeCommand}" AutomationProperties.Name="Open home" PointerEntered="FlankNav_PointerEntered" PointerExited="FlankNav_PointerExited"><Grid HorizontalAlignment="Stretch"><Border x:Name="NavHoverHomeSurface" Background="Transparent" /><Border Background="{ThemeResource GlassFlankActiveBrush}" Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Home}" /><StackPanel Orientation="Horizontal" Spacing="8" Padding="{ThemeResource GlassControlPadding}"><FontIcon Glyph="&#xE80F;" FontFamily="Segoe MDL2 Assets" /><TextBlock Text="Home" FontWeight="Bold" Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Home}" /><TextBlock Text="Home" Visibility="{Binding ActiveSection, Converter={StaticResource InverseSectionVisibility}, ConverterParameter=Home}" /></StackPanel></Grid></Button>
+                    <Button Grid.Row="1" HorizontalAlignment="Stretch" AccessKey="E" Style="{StaticResource GlassFlankNavButton}" Command="{Binding NavigateExploreCommand}" AutomationProperties.Name="Open Explore" PointerEntered="FlankNav_PointerEntered" PointerExited="FlankNav_PointerExited"><Grid HorizontalAlignment="Stretch"><Border x:Name="NavHoverExploreSurface" Background="Transparent" /><Border Background="{ThemeResource GlassFlankActiveBrush}" Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Explore}" /><StackPanel Orientation="Horizontal" Spacing="8" Padding="{ThemeResource GlassControlPadding}"><FontIcon Glyph="&#xE722;" FontFamily="Segoe MDL2 Assets" /><TextBlock Text="Explore" FontWeight="Bold" Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Explore}" /><TextBlock Text="Explore" Visibility="{Binding ActiveSection, Converter={StaticResource InverseSectionVisibility}, ConverterParameter=Explore}" /></StackPanel></Grid></Button>
+                </Grid>
+                <Border Grid.Row="1" Height="1" Margin="0,2" Background="{ThemeResource GlassPanelBorderBrush}" Opacity="0.45" />
+                <StackPanel Grid.Row="2" Spacing="8">
+                    <TextBlock Text="Preset Stations" FontWeight="SemiBold" />
+                    <ListView x:Name="FavoriteStationsListView" ItemsSource="{Binding FavoriteRows}" SelectionMode="None" Padding="{ThemeResource GlassListPadding}" ItemContainerStyle="{StaticResource GlassFlankListViewItem}" CanDragItems="True" CanReorderItems="True" AllowDrop="True" DragItemsCompleted="FavoriteStations_DragItemsCompleted" AutomationProperties.Name="Favourite stations" ToolTipService.ToolTip="Drag to reorder presets; right-click for actions">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="FavouriteRowSurface" Padding="6,5" Background="Transparent" PointerEntered="FlankRow_PointerEntered" PointerExited="FlankRow_PointerExited">
+                                    <Border.ContextFlyout>
+                                        <MenuFlyout>
+                                            <MenuFlyoutItem Text="Remove from presets" Tag="{Binding Station}" Click="RemoveFavorite_Click" />
+                                            <MenuFlyoutItem Text="Copy station name" Tag="{Binding Station}" Click="CopyStationName_Click" />
+                                            <MenuFlyoutItem Text="Open station website" Tag="{Binding Station}" Click="OpenStationWebsite_Click" />
+                                        </MenuFlyout>
+                                    </Border.ContextFlyout>
+                                    <!-- Keep the row itself non-button so ListView's built-in reorder
+                                         gesture owns the pointer. A full-width nested Button captured
+                                         the drag before CanReorderItems could see it. Tapped still
+                                         preserves the one-click play behavior; the context flyout
+                                         remains on the row for actions. -->
+                                    <Grid>
+                                        <Border Background="{ThemeResource GlassFlankActiveBrush}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" IsHitTestVisible="False" />
+                                        <Grid IsTapEnabled="True" Tapped="FavoriteStation_Tapped" AutomationProperties.Name="Play favourite station" ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="22" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <Border Width="18" Height="18" Background="{Binding ArtworkBrush}" CornerRadius="4"><Grid><TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" /><Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Favourite station artwork" /></Grid></Border>
+                                            <TextBlock x:Name="FavouriteRowName" Grid.Column="1" Text="{Binding Name}" FontWeight="{Binding IsPlaying, Converter={StaticResource BoolToFontWeight}}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            <Border Grid.Column="2" Margin="0,0,4,0" Padding="{ThemeResource GlassBadgePadding}" CornerRadius="10" Background="{ThemeResource GlassLiveBrush}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" VerticalAlignment="Center"><TextBlock Text="LIVE" FontSize="10" FontWeight="SemiBold" Foreground="White" /></Border>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+                <Border Grid.Row="3" Height="1" Margin="0,2" Background="{ThemeResource GlassPanelBorderBrush}" Opacity="0.45" />
+                <StackPanel Grid.Row="4" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button Click="Settings_Click" Width="36" Height="36" Padding="0" AutomationProperties.Name="Open settings" ToolTipService.ToolTip="Settings"><FontIcon Glyph="&#xE713;" FontFamily="Segoe MDL2 Assets" /></Button>
+                        <Button Width="36" Height="36" Padding="0" Command="{Binding RefreshCountryCommand}" AutomationProperties.Name="Refresh current country" ToolTipService.ToolTip="Refresh active country"><FontIcon Glyph="&#xE72C;" FontFamily="Segoe MDL2 Assets" /></Button>
+                        <Button Width="36" Height="36" Padding="0" Command="{Binding RetryCommand}" AutomationProperties.Name="Reparse active country catalogue" ToolTipService.ToolTip="Reparse active country catalogue"><FontIcon Glyph="&#xE895;" FontFamily="Segoe MDL2 Assets" /></Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Lives in the left pane's own column, anchored to its right edge - not a separate
+             dedicated splitter column. There is only ever one source of truth for where the
+             boundary is (LeftColumn's own width), so the splitter can never drift out of sync
+             with the panel it resizes. The hit zone bleeds a few px into the centre column for
+             grab tolerance (standard - e.g. VS Code's pane splitters do the same); only the 1px
+             line is ever visible, centred exactly on the true column boundary.
+             A plain focusable Grid, not a Button: ButtonBase's own internal pointer-capture
+             and press/click tracking fights a free-form drag gesture (confirmed by runtime
+             testing - both the prior root-level workaround and a directly-wired Button handler
+             produced zero movement on a real pointer drag). -->
+        <local:ResizeHandle x:Name="LeftSplitter" Grid.Column="0" Width="9" Margin="0,0,-5,12" HorizontalAlignment="Right" VerticalAlignment="Stretch" Background="Transparent" IsTabStop="True" UseSystemFocusVisuals="True" ToolTipService.ToolTip="Drag to resize library; use Left and Right arrows when focused" AutomationProperties.Name="Resize library pane" KeyDown="LeftSplitter_KeyDown" PointerPressed="LeftSplitter_PointerPressed" PointerMoved="LeftSplitter_PointerMoved" PointerReleased="LeftSplitter_PointerReleased" PointerCaptureLost="LeftSplitter_PointerCaptureLost" PointerEntered="LeftSplitter_PointerEntered" PointerExited="LeftSplitter_PointerExited" Canvas.ZIndex="100">
+            <Rectangle x:Name="LeftSplitterLine" IsHitTestVisible="False" Width="1" HorizontalAlignment="Right" VerticalAlignment="Stretch" Margin="0,8,5,8" Fill="{ThemeResource GlassMutedTextBrush}" Opacity="0.08" />
+        </local:ResizeHandle>
+
+        <Grid Grid.Column="1" Margin="12,0,12,12" RowSpacing="{ThemeResource GlassSectionSpacing}" Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Home}">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" RowSpacing="6">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <!-- Heading + rail travel together as one toggleable unit: hiding just the rail and
+                     leaving an orphaned "Top Stations" title above nothing would look broken. The
+                     recovery/loading status borders live only here, so they're hidden along with the
+                     rest when the user turns Top Stations off - an accepted tradeoff for an explicit
+                     user choice, not an oversight. -->
+                <Grid Grid.Row="0" Visibility="{Binding ShowTopStations, Converter={StaticResource BoolToVisibility}}">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition x:Name="FeaturedRailRow" Height="{ThemeResource GlassFeaturedRailHeight}" /></Grid.RowDefinitions>
+                    <Grid>
+                        <StackPanel Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="{Binding TopStationsHeading}" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding TopStationsCountLabel}" FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Border Padding="{ThemeResource GlassStatusPadding}" HorizontalAlignment="Left" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" Visibility="{Binding HasRecoveryStatus, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Catalogue recovery status"><TextBlock Text="{Binding RecoveryStatus}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" /></Border>
+                            <Border Padding="{ThemeResource GlassStatusPadding}" HorizontalAlignment="Left" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Loading stations"><TextBlock Text="Loading stations…" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" /></Border>
+                        </StackPanel>
+                    </Grid>
+                      <ScrollViewer Grid.Row="1" Padding="{ThemeResource GlassListPadding}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Top stations" ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollMode="Enabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <!-- WinUI ItemsWrapGrid changes its meaning with Orientation and can
+                         place valid cards beyond the viewport. Build the Mac-style rail as
+                         explicit adaptive rows so every curated station remains reachable. -->
+                     <ItemsControl x:Name="FeaturedStationsView" ItemsSource="{Binding FeaturedRows}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Top stations">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Vertical" Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ItemsControl ItemsSource="{Binding}" HorizontalAlignment="Center" HorizontalContentAlignment="Center">
+                                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                     <ItemsControl.ItemTemplate>
+                                         <DataTemplate>
+                                             <Border Width="{Binding TopCardWidth}" Padding="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="10">
+                                                <Grid RowSpacing="6">
+                                                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                     <Border Height="{Binding TopCardWidth}" Background="{Binding ArtworkBrush}" CornerRadius="8"><Grid><TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="28" FontWeight="SemiBold" Foreground="White" /><Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Station artwork" /><Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,6,0,0" Padding="{ThemeResource GlassBadgePadding}" CornerRadius="10" Background="{ThemeResource GlassLiveBrush}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" Canvas.ZIndex="2" IsHitTestVisible="False"><TextBlock Text="LIVE" FontSize="10" FontWeight="SemiBold" Foreground="White" /></Border><Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6" Width="34" Height="34" CornerRadius="17" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><Button Style="{StaticResource GlassRoundIconButton}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="StationPlay_Click" Tag="{Binding Station}" AutomationProperties.Name="{Binding PlayAutomationName}" ToolTipService.ToolTip="Play station"><FontIcon Glyph="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" /></Button></Border><Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6" Width="34" Height="34" CornerRadius="17" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><Button Style="{StaticResource GlassRoundIconButton}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Command="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}" CommandParameter="{Binding Station}" AutomationProperties.Name="{Binding FavoriteAutomationName}" ToolTipService.ToolTip="Toggle favourite"><FontIcon Glyph="{Binding FavoriteGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="20" Margin="-2,-2,2,2" /></Button></Border></Grid></Border>
+                                                     <TextBlock Grid.Row="1" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                     <TextBlock Grid.Row="2" Text="{Binding Location}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                </Grid>
+                <TextBlock Grid.Row="1" Margin="4,0,0,0" Text="Stations by Genre" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource GlassMutedTextBrush}" Visibility="{Binding ShowGenreFilter, Converter={StaticResource BoolToVisibility}}" />
+                <ListView Grid.Row="2" Margin="4,0,0,0" Padding="0,0,4,12" Height="62" MinHeight="62" MaxHeight="62" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" VerticalContentAlignment="Top" Visibility="{Binding ShowGenreFilter, Converter={StaticResource BoolToVisibility}}" ItemsSource="{Binding Genres}" SelectedItem="{Binding SelectedGenre, Mode=TwoWay}" SelectionMode="Single" AutomationProperties.Name="Station genres" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Hidden">
+                        <ListView.ItemContainerStyle>
+                            <StaticResource ResourceKey="GlassGenreListViewItem" />
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Horizontal" HorizontalAlignment="Left" /></ItemsPanelTemplate></ListView.ItemsPanel>
+                    <ListView.ItemTemplate><DataTemplate><Border Width="{StaticResource GlassGenreChipWidth}" Height="34" Margin="0,0,0,0" Padding="6,0" CornerRadius="14" Background="Transparent"><TextBlock Text="{Binding}" HorizontalAlignment="Stretch" VerticalAlignment="Center" TextAlignment="Center" TextTrimming="CharacterEllipsis" /></Border></DataTemplate></ListView.ItemTemplate>
+                </ListView>
+                <Grid Grid.Row="3" Margin="4,0,0,0" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="136" /><ColumnDefinition Width="152" /></Grid.ColumnDefinitions>
+                    <TextBlock Text="All Stations" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding StationCountLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="3" Width="136" MinWidth="136" Height="32" Padding="4,0" PlaceholderText="Filter stations" HorizontalAlignment="Right" ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding SelectedFilter, Mode=TwoWay}" AutomationProperties.Name="Station filter" AutomationProperties.HelpText="Filter stations" ToolTipService.ToolTip="Filter stations">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Converter={StaticResource BrowseModeLabel}}" TextTrimming="CharacterEllipsis" /></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <ComboBox Grid.Column="4" Width="152" MinWidth="152" Height="32" Padding="4,0" PlaceholderText="Sort stations" HorizontalAlignment="Right" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort, Mode=TwoWay}" AutomationProperties.Name="Station sort" AutomationProperties.HelpText="Sort stations" ToolTipService.ToolTip="Sort stations">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Converter={StaticResource BrowseModeLabel}}" TextTrimming="CharacterEllipsis" /></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <!-- List: the row layout this app has used for All Stations since before the view
+                     toggle existed - unchanged, just relabelled. -->
+                <ScrollViewer Padding="{ThemeResource GlassCollectionPadding}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Stations" Visibility="{Binding AllStationsViewStyle, Converter={StaticResource SectionVisibility}, ConverterParameter=List}" ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollMode="Enabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Stations}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" HorizontalAlignment="Center" MaximumRowsOrColumns="{Binding DataContext.StationGridColumns, ElementName=Root}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <!-- The whole card is the play hitbox now (per direct user feedback) -
+                                 a Button, not a Border, with Click going to StationPlay_Click. The
+                                 favourite star is a nested Button inside its content: WinUI routes
+                                 a click on a nested interactive control to that control alone and
+                                 marks it handled before it can bubble to the outer Button, so this
+                                 doesn't also trigger play - the same pattern already used for the
+                                 "Related station channels" cards in the Search tab. The play icon
+                                 itself is no longer a separate always-visible button; it's an
+                                 overlay on the artwork, shown only on hover (PointerEntered/Exited
+                                 in code-behind), matching the brief: "the play icon appear over
+                                 the art section when hovered". -->
+                            <Button Width="{Binding ListCardWidth}" Margin="0,0,8,8" Padding="{ThemeResource GlassCardPadding}" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="8" HorizontalContentAlignment="Stretch" Click="StationPlay_Click" Tag="{Binding Station}" AutomationProperties.Name="{Binding PlayAutomationName}" ToolTipService.ToolTip="Play station" PointerEntered="StationCard_PointerEntered" PointerExited="StationCard_PointerExited">
+                                <Button.ContextFlyout><MenuFlyout><MenuFlyoutItem Text="Copy station name" Tag="{Binding Station}" Click="CopyStationName_Click" /><MenuFlyoutItem Text="Open station website" Tag="{Binding Station}" Click="OpenStationWebsite_Click" /></MenuFlyout></Button.ContextFlyout>
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="48" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <Grid Width="46" Height="46">
+                                        <Border Background="{Binding ArtworkBrush}" CornerRadius="7"><Grid><TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="White" /><Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Station artwork" /></Grid></Border>
+                                         <Border x:Name="PlayHoverOverlay" Background="#99000000" CornerRadius="7" Opacity="0" IsHitTestVisible="False"><FontIcon Glyph="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="22" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                    </Grid>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding Location}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                    <Button Grid.Column="2" Width="34" Padding="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Command="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}" CommandParameter="{Binding Station}" AutomationProperties.Name="{Binding FavoriteAutomationName}" ToolTipService.ToolTip="Toggle favourite"><FontIcon Glyph="{Binding FavoriteGlyph}" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0" /></Button>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <!-- Grid: the same per-station card look as the Top Stations rail (square artwork,
+                     name/location below) - this per-item template is a deliberate copy of that
+                     one's markup (lines 158-166-ish above), not a new design, so the two stay
+                     visually identical as the user intends. -->
+                <ScrollViewer Padding="{ThemeResource GlassCollectionPadding}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="Stations grid" Visibility="{Binding AllStationsViewStyle, Converter={StaticResource SectionVisibility}, ConverterParameter=Grid}" ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollMode="Enabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Stations}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" HorizontalAlignment="Center" MaximumRowsOrColumns="{Binding DataContext.FeaturedGridColumns, ElementName=Root}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="{Binding TopCardWidth}" Margin="0,0,14,14" Padding="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="10">
+                                    <Border.ContextFlyout><MenuFlyout><MenuFlyoutItem Text="Copy station name" Tag="{Binding Station}" Click="CopyStationName_Click" /><MenuFlyoutItem Text="Open station website" Tag="{Binding Station}" Click="OpenStationWebsite_Click" /></MenuFlyout></Border.ContextFlyout>
+                                    <Grid RowSpacing="6">
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                        <Border Height="{Binding TopCardWidth}" Background="{Binding ArtworkBrush}" CornerRadius="8"><Grid><TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="28" FontWeight="SemiBold" Foreground="White" /><Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Station artwork" /><Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,6,0,0" Padding="{ThemeResource GlassBadgePadding}" CornerRadius="10" Background="{ThemeResource GlassLiveBrush}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" Canvas.ZIndex="2" IsHitTestVisible="False"><TextBlock Text="LIVE" FontSize="10" FontWeight="SemiBold" Foreground="White" /></Border><Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6" Width="34" Height="34" CornerRadius="17" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><Button Style="{StaticResource GlassRoundIconButton}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="StationPlay_Click" Tag="{Binding Station}" AutomationProperties.Name="{Binding PlayAutomationName}" ToolTipService.ToolTip="Play station"><FontIcon Glyph="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" /></Button></Border><Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6" Width="34" Height="34" CornerRadius="17" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><Button Style="{StaticResource GlassRoundIconButton}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Command="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}" CommandParameter="{Binding Station}" AutomationProperties.Name="{Binding FavoriteAutomationName}" ToolTipService.ToolTip="Toggle favourite"><FontIcon Glyph="{Binding FavoriteGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="20" Margin="-2,-2,2,2" /></Button></Border></Grid></Border>
+                                        <TextBlock Grid.Row="1" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Row="2" Text="{Binding Location}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <ScrollViewer x:Name="ExploreScrollViewer" Grid.Column="1" Margin="12,0,12,12" Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Explore}" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Hidden" VerticalScrollMode="Enabled" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Center" Padding="0,0,0,104" SizeChanged="ExploreScrollViewer_SizeChanged">
+         <!-- The viewport owns the centering contract. The content frame sits in the Auto
+              middle column, with equal star columns on both sides, so its left/right gutters
+              stay symmetric when the window, side panes, or vertical scrollbar changes size. -->
+         <Grid x:Name="ExploreViewportFrame" HorizontalAlignment="Center">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+          <Grid x:Name="ExploreContentFrame" Grid.Column="1" RowSpacing="18" MaxWidth="1600" HorizontalAlignment="Center">
+             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+               <Border Padding="16" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="14">
+                <StackPanel Spacing="10">
+                     <StackPanel Spacing="3"><TextBlock Text="Explore radio" FontSize="26" FontWeight="SemiBold" /><TextBlock Text="Find stations by sound, place, language, or country." FontSize="15" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE721;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" />
+                         <TextBox Grid.Column="1" MinHeight="42" PlaceholderText="Search by station, city, or frequency" Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search by station, city, or frequency" KeyDown="SearchTextBox_KeyDown" />
+                        <Button Grid.Column="2" Width="36" Height="36" Padding="0" Content="&#xE894;" FontFamily="Segoe MDL2 Assets" Command="{Binding ClearSearchCommand}" Visibility="{Binding IsExploreQueryActive, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Clear station search" ToolTipService.ToolTip="Clear search" />
+                        <Button Grid.Column="3" MinWidth="84" Content="Search" Command="{Binding SearchCommand}" AutomationProperties.Name="Run station search" />
+                    </Grid>
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="Suggestions" FontSize="13" Foreground="{ThemeResource GlassMutedTextBrush}" VerticalAlignment="Center" />
+                        <ListView Grid.Column="1" Style="{StaticResource GlassExploreRailListView}" Height="40" ItemsSource="{Binding SearchSuggestions}" SelectionMode="None" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" AutomationProperties.Name="Search suggestions">
+                        <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListView.ItemsPanel>
+                        <ListView.ItemTemplate><DataTemplate><Button Style="{StaticResource GlassExploreChipButton}" Content="{Binding}" Command="{Binding DataContext.SearchSuggestionCommand, ElementName=Root}" CommandParameter="{Binding}" AutomationProperties.Name="{Binding}" /></DataTemplate></ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <Border Grid.Row="1" Padding="16,14" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="14">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Browse categories" FontSize="15" FontWeight="SemiBold" />
+                    <ListView Width="{Binding ExploreCategoryGridWidth}" ItemsSource="{Binding ExploreGenres}" SelectedItem="{Binding SelectedExploreGenre, Mode=TwoWay}" SelectionMode="Single" ItemContainerStyle="{StaticResource GlassExploreCategoryItem}" HorizontalAlignment="Center" HorizontalContentAlignment="Center" SelectionChanged="ExploreGenre_SelectionChanged" AutomationProperties.Name="Explore categories" ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden">
+                        <ListView.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Vertical" HorizontalAlignment="Center" MaximumRowsOrColumns="{Binding DataContext.ExploreCategoryRows, ElementName=Root}" /></ItemsPanelTemplate></ListView.ItemsPanel>
+                        <ListView.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" AutomationProperties.Name="{Binding}" /></DataTemplate></ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+            </Border>
+               <Border Grid.Row="2" Padding="16,14" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="14" Visibility="{Binding ShowExploreNetworkRail, Converter={StaticResource BoolToVisibility}}">
+                  <StackPanel Spacing="10">
+                      <StackPanel Spacing="2"><TextBlock Text="Featured networks" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="Broadcasters worth knowing" FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel>
+                      <ListView ItemTemplate="{StaticResource ExploreStationRailTemplate}" Height="262" Style="{StaticResource GlassExploreRailListView}" ItemsSource="{Binding ExploreMajorBrands}" SelectionMode="None" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" AutomationProperties.Name="Featured networks">
+                        <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListView.ItemsPanel>
+                    </ListView>
+                  </StackPanel>
+             </Border>
+              <Border Grid.Row="3" Padding="16,14" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="14" Visibility="{Binding IsExploreQueryActive, Converter={StaticResource BoolToVisibility}}">
+                  <StackPanel Spacing="10"><StackPanel Spacing="2"><TextBlock Text="Station channels" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="Related sub-brands and streams" FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel><ListView Height="104" ItemsSource="{Binding ExploreBrandClusters}" SelectionMode="None" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" AutomationProperties.Name="Station channels"><ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListView.ItemsPanel><ListView.ItemTemplate><DataTemplate><Button Width="286" Height="92" Margin="0,0,12,0" Padding="12,10" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="10" Click="StationPlay_Click" Tag="{Binding Primary.Station}" AutomationProperties.Name="{Binding Primary.PlayAutomationName}"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="60" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Border Width="60" Height="60" Background="{Binding Primary.ArtworkBrush}" CornerRadius="9"><Grid><TextBlock Text="{Binding Primary.ArtworkInitials}" Visibility="{Binding Primary.HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" FontSize="12" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Primary.ArtworkUri}" Visibility="{Binding Primary.HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid></Border><StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3"><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="14" /><TextBlock Text="{Binding VariantLabel}" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" /><TextBlock Text="{Binding Location}" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel></Grid></Button></DataTemplate></ListView.ItemTemplate></ListView></StackPanel>
+             </Border>
+               <Border Grid.Row="4" Padding="16,14" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="14" Visibility="{Binding ExploreWithGenres.Count, Converter={StaticResource ZeroCountVisibility}, ConverterParameter=Invert}">
+                  <StackPanel Spacing="10"><StackPanel Spacing="2"><TextBlock Text="Stations with genres" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="Explore the sound you searched for" FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel><ListView ItemTemplate="{StaticResource ExploreStationRailTemplate}" Height="262" ItemsSource="{Binding ExploreWithGenres}" SelectionMode="None" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" AutomationProperties.Name="Stations with genres"><ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListView.ItemsPanel></ListView></StackPanel>
+             </Border>
+                <Border Grid.Row="5" Padding="16,14" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="14" Visibility="{Binding ExplorePresets.Count, Converter={StaticResource ZeroCountVisibility}, ConverterParameter=Invert}">
+                   <StackPanel Spacing="10"><StackPanel Spacing="2"><TextBlock Text="Your presets" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="Pick up where you left off" FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel><ListView ItemTemplate="{StaticResource ExploreStationRailTemplate}" Height="262" ItemsSource="{Binding ExplorePresets}" SelectionMode="None" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" AutomationProperties.Name="Explore presets"><ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListView.ItemsPanel></ListView></StackPanel>
+             </Border>
+                <Border Grid.Row="6" Padding="16,14" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="14" Visibility="{Binding ExploreWorldwide.Count, Converter={StaticResource ZeroCountVisibility}, ConverterParameter=Invert}">
+                   <StackPanel Spacing="10"><StackPanel Spacing="2"><TextBlock Text="Top stations worldwide" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="A signal from every part of the world" FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel><ListView ItemTemplate="{StaticResource ExploreStationRailTemplate}" Height="262" ItemsSource="{Binding ExploreWorldwide}" SelectionMode="None" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Hidden" AutomationProperties.Name="Top stations worldwide"><ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListView.ItemsPanel></ListView></StackPanel>
+             </Border>
+                <Border Grid.Row="7" Padding="16,14" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="14">
+                  <StackPanel Spacing="10">
+                      <StackPanel Spacing="2"><TextBlock Text="Explore countries" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="Browse stations by market and language" FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel>
+                      <GridView Height="230" Padding="0" ItemsSource="{Binding Countries}" SelectionMode="None" HorizontalContentAlignment="Center" ScrollViewer.HorizontalScrollMode="Enabled" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Hidden" AutomationProperties.Name="Explore countries">
+                          <GridView.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Vertical" HorizontalAlignment="Center" MaximumRowsOrColumns="2" /></ItemsPanelTemplate></GridView.ItemsPanel>
+                          <GridView.ItemTemplate>
+                              <DataTemplate>
+                                  <Button Width="180" Height="108" Padding="0" Margin="0,0,10,8" Click="CountryLoadAndNavigate_Click" AutomationProperties.Name="{Binding DisplayName}">
+                                      <Grid Background="{ThemeResource GlassPanelBrush}">
+                                          <Image Source="{Binding FlagFallbackImagePath}" Stretch="UniformToFill" Opacity="0.72" />
+                                          <Image Source="{Binding FlagImagePath}" Stretch="UniformToFill" Opacity="0.72" />
+                                          <Border VerticalAlignment="Bottom" Margin="8" Padding="8,6" Background="{ThemeResource GlassPanelBrush}" CornerRadius="8" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1">
+                                              <StackPanel Orientation="Horizontal" Spacing="7"><TextBlock Text="{Binding FlagEmoji}" FontSize="16" /><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /></StackPanel>
+                                          </Border>
+                                      </Grid>
+                                  </Button>
+                              </DataTemplate>
+                          </GridView.ItemTemplate>
+                      </GridView>
+                 </StackPanel>
+             </Border>
+              <Grid Grid.Row="8" RowSpacing="8" Visibility="{Binding IsExploreQueryActive, Converter={StaticResource BoolToVisibility}}">
+               <!-- The media pill floats above this surface. Keep its clearance inside the
+                    scrollable content so the last Explore cards remain fully reachable and
+                    readable instead of being hidden behind the overlay. -->
+               <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+               <StackPanel Orientation="Horizontal" Spacing="8" Padding="4,14,4,0"><TextBlock Text="Stations" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="{Binding StationCountLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" VerticalAlignment="Center" /></StackPanel>
+               <GridView Grid.Row="1" Padding="4,0,4,104" ItemsSource="{Binding ExploreResults}" SelectionMode="None" HorizontalContentAlignment="Center" AutomationProperties.Name="Explore results" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollMode="Enabled">
+                <GridView.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Vertical" HorizontalAlignment="Center" MaximumRowsOrColumns="{Binding DataContext.StationGridColumns, ElementName=Root}" /></ItemsPanelTemplate></GridView.ItemsPanel>
+                <GridView.ItemTemplate>
+                         <DataTemplate>
+                          <Border Width="{Binding ListCardWidth}" MinHeight="88" Margin="0,0,10,10" Padding="12,10" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="10" Tapped="ExploreStation_Tapped">
+                            <Border.ContextFlyout><MenuFlyout><MenuFlyoutItem Text="Copy station name" Tag="{Binding Station}" Click="CopyStationName_Click" /><MenuFlyoutItem Text="Open station website" Tag="{Binding Station}" Click="OpenStationWebsite_Click" /></MenuFlyout></Border.ContextFlyout>
+                             <Grid ColumnSpacing="12">
+                                 <Grid.ColumnDefinitions><ColumnDefinition Width="58" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                 <Border Width="56" Height="56" Background="{Binding ArtworkBrush}" CornerRadius="8"><Grid><TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="White" /><Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" AutomationProperties.Name="Station artwork" /><Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="3" Padding="2" Background="{ThemeResource GlassPanelBrush}" CornerRadius="4" Visibility="{Binding HasCountryFlag, Converter={StaticResource BoolToVisibility}}"><Image Source="{Binding CountryFlagImagePath}" Width="16" Height="11" Stretch="Uniform" AutomationProperties.Name="Station country" /></Border></Grid></Border>
+                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding Location}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding GenresText}" FontSize="10" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" Visibility="{Binding HasGenres, Converter={StaticResource BoolToVisibility}}" /></StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"><Button Width="34" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Command="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}" CommandParameter="{Binding Station}" AutomationProperties.Name="{Binding FavoriteAutomationName}" ToolTipService.ToolTip="Toggle favourite"><FontIcon Glyph="{Binding FavoriteGlyph}" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0" /></Button><Button Style="{StaticResource GlassRoundIconButton}" Click="StationPlay_Click" Tag="{Binding Station}" AutomationProperties.Name="{Binding PlayAutomationName}" ToolTipService.ToolTip="Play station"><FontIcon Glyph="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" /></Button></StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </GridView.ItemTemplate>
+             </GridView>
+             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Visibility="{Binding ExploreResults.Count, Converter={StaticResource ZeroCountVisibility}}" AutomationProperties.Name="No explore results">
+                <FontIcon Glyph="&#xE721;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" FontSize="28" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                 <TextBlock Text="No stations found" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                 <TextBlock Text="Try a station, genre, country, or city." Foreground="{ThemeResource GlassMutedTextBrush}" HorizontalAlignment="Center" />
+             </StackPanel>
+             <Border Grid.RowSpan="11" Width="360" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,12" Padding="{ThemeResource GlassPanelPadding}" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="12" Canvas.ZIndex="20" Visibility="{Binding IsExploreDetailsOpen, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Station details">
+                 <Grid RowSpacing="12">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                     <Grid ColumnSpacing="8">
+                         <TextBlock Text="Station details" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+                         <Button Grid.Column="1" Content="Close" Command="{Binding CloseExploreDetailsCommand}" HorizontalAlignment="Right" AutomationProperties.Name="Close station details" />
+                     </Grid>
+                     <Border Grid.Row="1" Height="180" Background="{Binding ExploreSelectedRow.ArtworkBrush}" CornerRadius="8"><Grid><TextBlock Text="{Binding ExploreSelectedRow.ArtworkInitials}" Visibility="{Binding ExploreSelectedRow.HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="32" FontWeight="SemiBold" Foreground="White" /><Image Source="{Binding ExploreSelectedRow.ArtworkUri}" Visibility="{Binding ExploreSelectedRow.HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid></Border>
+                       <StackPanel Grid.Row="2" Spacing="3"><StackPanel Orientation="Horizontal" Spacing="8"><Image Source="{Binding ExploreSelectedRow.CountryFlagImagePath}" Width="22" Height="15" Stretch="Uniform" VerticalAlignment="Center" /><TextBlock Text="{Binding ExploreSelectedStation.Name}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" /></StackPanel><TextBlock Text="{Binding ExploreSelectedLocationLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" /></StackPanel>
+                     <StackPanel Grid.Row="3" Spacing="4"><TextBlock Text="Profile" FontWeight="SemiBold" /><TextBlock Text="{Binding ExploreSelectedGenresLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" /><TextBlock Text="{Binding ExploreSelectedLanguageLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" /></StackPanel>
+                     <StackPanel Grid.Row="4" Spacing="4"><TextBlock Text="Stream" FontWeight="SemiBold" /><TextBlock Text="{Binding ExploreSelectedStreamLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" /><TextBlock Text="{Binding ExploreSelectedAvailabilityLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" /></StackPanel>
+                     <TextBlock Grid.Row="5" Text="{Binding ExploreSelectedPopularityLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                     <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="8"><Button Content="Play station" Command="{Binding PlayCommand}" CommandParameter="{Binding ExploreSelectedStation}" AutomationProperties.Name="Play selected station" /><Button Content="Favourite" Command="{Binding ToggleFavoriteCommand}" CommandParameter="{Binding ExploreSelectedStation}" AutomationProperties.Name="Favourite selected station" /><Button Content="Website" Tag="{Binding ExploreSelectedStation}" Click="OpenStationWebsite_Click" Visibility="{Binding HasExploreSelectedHomepage, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Open station website" /></StackPanel>
+                     <TextBlock Grid.Row="7" Text="Radio Browser catalogue metadata is shown here. Biography, RSS, and other editorial profile fields are only displayed when a trusted source supplies them." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" VerticalAlignment="Bottom" />
+                 </Grid>
+             </Border>
+             </Grid>
+             <TextBlock Grid.Row="9" Text="{Binding StatusText}" Foreground="{ThemeResource GlassMutedTextBrush}" AutomationProperties.Name="Search status" />
+          </Grid>
+         </Grid>
+        </ScrollViewer>
+
+        <Grid Grid.Column="1" Margin="12,0,12,12" RowSpacing="{ThemeResource GlassSectionSpacing}" Visibility="{Binding ActiveSection, Converter={StaticResource SectionVisibility}, ConverterParameter=Discover}">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+             <Border Padding="{ThemeResource GlassPanelPadding}" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="10">
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="Discover" FontSize="20" FontWeight="SemiBold" /><TextBlock Text="Cross-country highlights and popular stations." Foreground="{ThemeResource GlassMutedTextBrush}" /></StackPanel>
+                    <Button Grid.Column="1" Content="Load Discover" Command="{Binding DiscoverCommand}" HorizontalAlignment="Right" AutomationProperties.Name="Load discover stations" />
+                </Grid>
+            </Border>
+             <Grid Grid.Row="1">
+              <GridView Padding="{ThemeResource GlassCollectionPadding}" ItemsSource="{Binding DiscoverResults}" SelectionMode="None" HorizontalContentAlignment="Center" AutomationProperties.Name="Discover stations" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollMode="Enabled">
+                 <GridView.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" HorizontalAlignment="Center" MaximumRowsOrColumns="{Binding DataContext.FeaturedGridColumns, ElementName=Root}" /></ItemsPanelTemplate></GridView.ItemsPanel>
+                 <GridView.ItemTemplate>
+                     <DataTemplate>
+                         <Border Width="{Binding TopCardWidth}" Padding="8" Margin="0,0,10,10" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="10">
+                             <Border.ContextFlyout><MenuFlyout><MenuFlyoutItem Text="Copy station name" Tag="{Binding Station}" Click="CopyStationName_Click" /><MenuFlyoutItem Text="Open station website" Tag="{Binding Station}" Click="OpenStationWebsite_Click" /></MenuFlyout></Border.ContextFlyout>
+                             <Grid RowSpacing="6">
+                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                 <Border Height="{Binding TopCardWidth}" Background="{Binding ArtworkBrush}" CornerRadius="8"><Grid>
+                                     <TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="28" FontWeight="SemiBold" Foreground="White" />
+                                     <Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Station artwork" />
+                                     <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,6,0,0" Padding="{ThemeResource GlassBadgePadding}" CornerRadius="10" Background="{ThemeResource GlassLiveBrush}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" Canvas.ZIndex="2" IsHitTestVisible="False"><TextBlock Text="LIVE" FontSize="10" FontWeight="SemiBold" Foreground="White" /></Border>
+                                     <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6" Width="34" Height="34" CornerRadius="17" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><Button Style="{StaticResource GlassRoundIconButton}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="StationPlay_Click" Tag="{Binding Station}" AutomationProperties.Name="{Binding PlayAutomationName}" ToolTipService.ToolTip="Play station"><FontIcon Glyph="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" /></Button></Border>
+                                     <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6" Width="34" Height="34" CornerRadius="17" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><Button Style="{StaticResource GlassRoundIconButton}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Command="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}" CommandParameter="{Binding Station}" AutomationProperties.Name="{Binding FavoriteAutomationName}" ToolTipService.ToolTip="Toggle favourite"><FontIcon Glyph="{Binding FavoriteGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="20" Margin="-2,-2,2,2" /></Button></Border>
+                                 </Grid></Border>
+                                 <TextBlock Grid.Row="1" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                 <TextBlock Grid.Row="2" Text="{Binding Location}" FontSize="11" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" />
+                             </Grid>
+                         </Border>
+                     </DataTemplate>
+                 </GridView.ItemTemplate>
+             </GridView>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Visibility="{Binding DiscoverResults.Count, Converter={StaticResource ZeroCountVisibility}}" AutomationProperties.Name="No discover results">
+                <FontIcon Glyph="&#xE722;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" FontSize="28" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                <TextBlock Text="No discover stations loaded" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <TextBlock Text="Use Load Discover or Retry to try again." Foreground="{ThemeResource GlassMutedTextBrush}" HorizontalAlignment="Center" />
+            </StackPanel>
+            </Grid>
+            <TextBlock Grid.Row="2" Text="{Binding StatusText}" Foreground="{ThemeResource GlassMutedTextBrush}" AutomationProperties.Name="Discover status" />
+        </Grid>
+
+        <Border x:Name="CountriesPanel" Grid.Column="2" Margin="0,0,0,12" Padding="{ThemeResource GlassPanelPadding}" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="12">
+            <Grid RowSpacing="8">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                <TextBlock Text="Countries" FontWeight="SemiBold" />
+                <ListView x:Name="CountriesListView" Grid.Row="1" Padding="{ThemeResource GlassListPadding}" ItemsSource="{Binding Countries}" SelectedItem="{Binding SelectedCountry, Mode=TwoWay}" SelectionChanged="Countries_SelectionChanged" Loaded="CountriesListView_Loaded" ItemContainerStyle="{StaticResource GlassFlankListViewItem}" AutomationProperties.Name="Countries">
+                    <ListView.ItemTemplate><DataTemplate><Border Padding="{ThemeResource GlassControlPadding}" Background="Transparent" Tapped="CountryLoad_Tapped" HorizontalAlignment="Stretch" AutomationProperties.Name="Load country"><StackPanel Orientation="Horizontal" Spacing="8"><Image Source="{Binding FlagImagePath}" Width="20" Height="14" Stretch="Uniform" VerticalAlignment="Center" /><TextBlock x:Name="CountryName" Text="{Binding DisplayName}" VerticalAlignment="Center" /></StackPanel></Border></DataTemplate></ListView.ItemTemplate>
+                </ListView>
+                <Border Grid.Row="2" Height="1" Margin="0,2" Background="{ThemeResource GlassPanelBorderBrush}" Opacity="0.45" />
+                <TextBlock Grid.Row="3" Text="Top in selected country" FontWeight="SemiBold" />
+                <ListView x:Name="TopStationsListView" Grid.Row="4" Padding="{ThemeResource GlassListPadding}" ItemsSource="{Binding TopStations}" SelectionMode="None" ItemContainerStyle="{StaticResource GlassFlankListViewItem}" AutomationProperties.Name="Top stations in selected country">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="TopCountryRowSurface" Padding="6,5" Background="Transparent" Tapped="TopStation_Tapped" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding PlayAutomationName}" ToolTipService.ToolTip="Play top station" PointerEntered="StationCard_PointerEntered" PointerExited="StationCard_PointerExited">
+                                <Grid>
+                                    <Grid ColumnSpacing="8">
+                                        <Border HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="{ThemeResource GlassFlankActiveBrush}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" />
+                                        <Grid ColumnSpacing="8">
+                                            <!-- The whole row is already the play hitbox (the
+                                                 parent Button's Click), so a trailing play glyph
+                                                 here would be redundant - removed per direct user
+                                                 feedback. Hovering anywhere on the row (not just the
+                                                 artwork) reveals a play icon overlay on the artwork
+                                                 instead, matching the All Stations list view's own
+                                                 hover behaviour for consistency. -->
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="30" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <Grid Width="30" Height="30">
+                                                <Border Background="{Binding ArtworkBrush}" CornerRadius="5">
+                                                    <Grid>
+                                                        <TextBlock Text="{Binding ArtworkInitials}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" FontSize="9" FontWeight="SemiBold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        <Image Source="{Binding ArtworkUri}" Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Top station artwork" />
+                                                    </Grid>
+                                                </Border>
+                                                <Border x:Name="PlayHoverOverlay" Background="#99000000" CornerRadius="5" Opacity="0" IsHitTestVisible="False"><FontIcon Glyph="{Binding PlayGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="19" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                                            </Grid>
+                                            <TextBlock x:Name="TopCountryRowName" Grid.Column="1" Text="{Binding Name}" FontWeight="{Binding IsPlaying, Converter={StaticResource BoolToFontWeight}}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            <Border Grid.Column="2" Margin="0,0,8,0" Padding="7,3" CornerRadius="10" Background="{ThemeResource GlassLiveBrush}" VerticalAlignment="Center" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="LIVE" FontSize="10" FontWeight="SemiBold" Foreground="White" /></Border>
+                                        </Grid>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </Border>
+
+        <!-- Mirror of LeftSplitter: lives in the countries pane's own column, anchored to its
+             left edge, hit zone bleeding into the centre column for grab tolerance. -->
+        <local:ResizeHandle x:Name="RightSplitter" Grid.Column="2" Width="9" Margin="-5,0,0,12" HorizontalAlignment="Left" VerticalAlignment="Stretch" Background="Transparent" IsTabStop="True" UseSystemFocusVisuals="True" ToolTipService.ToolTip="Drag to resize countries; use Left and Right arrows when focused" AutomationProperties.Name="Resize countries pane" KeyDown="RightSplitter_KeyDown" PointerPressed="RightSplitter_PointerPressed" PointerMoved="RightSplitter_PointerMoved" PointerReleased="RightSplitter_PointerReleased" PointerCaptureLost="RightSplitter_PointerCaptureLost" PointerEntered="RightSplitter_PointerEntered" PointerExited="RightSplitter_PointerExited" Canvas.ZIndex="100">
+            <Rectangle x:Name="RightSplitterLine" IsHitTestVisible="False" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="5,8,0,8" Fill="{ThemeResource GlassMutedTextBrush}" Opacity="0.08" />
+        </local:ResizeHandle>
+
+        <Border x:Name="PlayerFade" Grid.RowSpan="2" Grid.Column="1" Height="130" Margin="0,0,12,0" VerticalAlignment="Bottom" IsHitTestVisible="False" Canvas.ZIndex="40">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="{ThemeResource GlassFadeStartColor}" Offset="0" />
+                    <GradientStop Color="{ThemeResource GlassFadeStartColor}" Offset="0.52" />
+                    <GradientStop Color="{ThemeResource GlassFadeEndColor}" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <Border x:Name="PlayerBar" Grid.RowSpan="2" Grid.Column="1" MinWidth="0" MaxWidth="920" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,12,8" Padding="{ThemeResource GlassPlayerPadding}" Background="{ThemeResource GlassPlayerGlassBrush}" BorderBrush="{ThemeResource GlassPlayerBorderBrush}" BorderThickness="1.5" CornerRadius="16" Canvas.ZIndex="50" Translation="0,0,32">
+            <!-- Translation.Z + ThemeShadow is the standard WinUI3-desktop way to cast a real,
+                 lightweight drop shadow onto the sibling content beneath - distinct from
+                 PlayerFade above (a big soft gradient over the whole bottom strip): this is a
+                 tight shadow around the pill itself, so it visibly sits above the UI behind it,
+                 per direct user feedback. -->
+            <Border.Shadow>
+                <ThemeShadow />
+            </Border.Shadow>
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <StackPanel x:Name="PlayerStatusPanel" Grid.Column="0" Width="270" MaxWidth="270" HorizontalAlignment="Left" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><Border Width="38" Height="38" Background="{ThemeResource GlassArtworkFallbackBrush}" CornerRadius="6"><Grid><TextBlock Text="{Binding NowPlayingArtworkInitials}" Visibility="{Binding HasNowPlayingArtwork, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="White" /><Image Source="{Binding NowPlayingArtworkUri}" Visibility="{Binding HasNowPlayingArtwork, Converter={StaticResource BoolToVisibility}}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Now playing artwork" /></Grid></Border><StackPanel x:Name="PlayerStatusTextPanel" Width="170" VerticalAlignment="Center" Spacing="1"><TextBlock Text="{Binding NowPlaying.Name, TargetNullValue=No Station}" FontWeight="Bold" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding NowPlaying.LocationText, TargetNullValue=No station selected}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource GlassMutedTextBrush}" TextTrimming="CharacterEllipsis" /></StackPanel><Button x:Name="PlayerFavoriteButton" Style="{StaticResource GlassRoundIconButton}" Background="{ThemeResource GlassPlayerSurfaceBrush}" Command="{Binding ToggleFavoriteCommand}" CommandParameter="{Binding NowPlaying}" AutomationProperties.Name="{Binding NowPlayingFavoriteAutomationName}"><FontIcon Glyph="{Binding NowPlayingFavoriteGlyph}" FontFamily="Segoe MDL2 Assets" FontWeight="Bold" /></Button></StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center"><Button Style="{StaticResource GlassRoundIconButton}" Background="{ThemeResource GlassPlayerSurfaceBrush}" Command="{Binding PreviousCommand}" AutomationProperties.Name="Previous station"><FontIcon Glyph="&#xF632;" FontFamily="{StaticResource GlassFluentIconFont}" FontSize="16" /></Button><!-- Translation.Z + Shadow aren't true DependencyProperties, so they can't live in the
+                     GlassPlayerPlayButton style's Setters (WMC0095) - set directly here instead. A
+                     smaller lift than the pill itself (Z 32) - just enough to read as sitting
+                     slightly above the pill's surface, not a second heavy shadow competing with it.
+                     A glow-ring decoration was tried twice here and reverted twice - this button
+                     stays plain (per direct user feedback, both times); only the icon/glyph itself
+                     changes when icon work is requested, not the button's own chrome. -->
+                <Button Style="{StaticResource GlassPlayerPlayButton}" Translation="0,0,12" Command="{Binding TogglePlaybackCommand}" AutomationProperties.Name="Play or pause playback">
+                    <Button.Shadow><ThemeShadow /></Button.Shadow>
+                    <FontIcon Glyph="{Binding PlaybackGlyph}" FontFamily="{StaticResource GlassFluentIconFont}" FontSize="26" />
+                </Button><Button Style="{StaticResource GlassRoundIconButton}" Background="{ThemeResource GlassPlayerSurfaceBrush}" Command="{Binding NextCommand}" AutomationProperties.Name="Next station"><FontIcon Glyph="&#xF573;" FontFamily="{StaticResource GlassFluentIconFont}" FontSize="16" /></Button></StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" VerticalAlignment="Center"><Border x:Name="PlayerMeterPanel" MinHeight="30" Padding="10,4" CornerRadius="15" Background="{ThemeResource GlassPlayerSurfaceBrush}" AutomationProperties.Name="{Binding TelemetryLabel}"><local:StreamMeterControl State="{Binding PlaybackState}" Progress="{Binding BufferingProgress}" HasProgress="{Binding HasBufferingProgress}" /></Border><StackPanel x:Name="PlayerVolumePanel" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Style="{StaticResource GlassRoundIconButton}" Width="28" Height="28" MinHeight="28" Background="Transparent" Command="{Binding ToggleMuteCommand}" AutomationProperties.Name="{Binding VolumeAutomationName}"><FontIcon Glyph="{Binding VolumeGlyph}" FontFamily="{StaticResource GlassFluentIconFont}" FontSize="13" Foreground="{ThemeResource GlassMutedTextBrush}" /></Button><!-- SmallChange defaults to 1 and is NOT derived from StepFrequency in WinUI - without
+                     setting it explicitly, a single arrow-key press on this 0..1-range Slider
+                     jumped the full range (on/off), which is exactly what was reported. -->
+                <Slider Width="90" Minimum="0" Maximum="1" StepFrequency="0.01" SmallChange="0.01" LargeChange="0.1" Value="{Binding Volume, Mode=TwoWay}" IsThumbToolTipEnabled="False" AutomationProperties.Name="Playback volume" /></StackPanel></StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.ColumnSpan="3" Background="{ThemeResource GlassOnboardingOverlayBrush}" Visibility="{Binding IsOnboarding, Converter={StaticResource BoolToVisibility}}" Canvas.ZIndex="500">
+          <!-- HorizontalAlignment="Center" on a direct overlay child measures against the
+               wrong available width somewhere in this window's custom-titlebar/ColumnSpan
+               layout chain (reproduced with a fixed-width Border: it pins to the right edge
+               instead of centering, regardless of RowSpan or VerticalAlignment). Centering
+               through Auto/Star grid columns instead sidesteps it entirely. -->
+          <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Border Grid.Column="1" Width="680" MaxHeight="820" Margin="{ThemeResource GlassDialogPadding}" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="18" Padding="{ThemeResource GlassDialogPadding}">
+              <Grid>
+
+                <!-- Step 1 of 2: Welcome. Explains what the app is and what onboarding will do
+                     before asking for any decisions. -->
+                <StackPanel Spacing="18" VerticalAlignment="Center" Visibility="{Binding IsOnboardingWelcomeStep, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Welcome to Glass Radio">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Welcome to Glass Radio" FontSize="30" FontWeight="SemiBold" />
+                        <TextBlock Text="Glass Radio lets you browse, search, and stream thousands of radio stations from countries worldwide, through a calm, glass-panel desktop app." TextWrapping="Wrap" FontSize="15" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                    </StackPanel>
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Here's what happens next:" FontWeight="SemiBold" />
+                            <StackPanel Orientation="Horizontal" Spacing="10"><Border Width="22" Height="22" CornerRadius="11" Background="{ThemeResource GlassAccentBrush}"><TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="White" /></Border><TextBlock Text="Pick your priority country and a few content preferences." VerticalAlignment="Center" TextWrapping="Wrap" /></StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="10"><Border Width="22" Height="22" CornerRadius="11" Background="{ThemeResource GlassAccentBrush}"><TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="White" /></Border><TextBlock Text="Glass Radio builds your station library in the background. There's a game if you want to pass the time." VerticalAlignment="Center" TextWrapping="Wrap" /></StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="10"><Border Width="22" Height="22" CornerRadius="11" Background="{ThemeResource GlassAccentBrush}"><TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="White" /></Border><TextBlock Text="You're dropped straight into Home, ready to browse and listen." VerticalAlignment="Center" TextWrapping="Wrap" /></StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Button HorizontalAlignment="Right" Command="{Binding NextOnboardingStepCommand}" AutomationProperties.Name="Continue to library setup">
+                        <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="Continue" /><FontIcon Glyph="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="12" /></StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Step 2 of 2: Selections. Priority country, content preferences, and the
+                     all-countries-vs-specific-countries choice. The per-country checklist only
+                     appears in "specific countries" mode - it is never a 56-item pre-ticked wall
+                     the user has to fight through. -->
+                <Grid RowSpacing="12" Visibility="{Binding IsOnboardingSelectionsStep, Converter={StaticResource BoolToVisibility}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Spacing="4">
+                        <TextBlock Text="Set up your library" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock Text="A few quick choices, then Glass Radio builds your station library." TextWrapping="Wrap" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Spacing="6">
+                        <TextBlock Text="Priority country" FontWeight="SemiBold" />
+                        <TextBlock Text="This one opens first and loads immediately." FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" />
+                        <ComboBox ItemsSource="{Binding Countries}" SelectedItem="{Binding OnboardingCountry, Mode=TwoWay}" DisplayMemberPath="DisplayName" HorizontalAlignment="Stretch" AutomationProperties.Name="Priority country" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Spacing="6">
+                        <TextBlock Text="Content preferences" FontWeight="SemiBold" />
+                        <TextBlock Text="Top Stations never promotes religious content, regardless of these choices." FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Border Padding="{ThemeResource GlassControlPadding}" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><CheckBox Content="Religion" IsChecked="{Binding OnboardingAllowReligious, Mode=TwoWay}" AutomationProperties.Name="Allow religious content" /></Border>
+                                <Border Padding="{ThemeResource GlassControlPadding}" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><CheckBox Content="Sports" IsChecked="{Binding OnboardingAllowSports, Mode=TwoWay}" AutomationProperties.Name="Allow sports content" /></Border>
+                                <Border Padding="{ThemeResource GlassControlPadding}" CornerRadius="8" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1"><CheckBox Content="News" IsChecked="{Binding OnboardingAllowNews, Mode=TwoWay}" AutomationProperties.Name="Allow news content" /></Border>
+                            </StackPanel>
+                            <TextBlock Text="Languages for Explore" FontWeight="SemiBold" Margin="0,4,0,0" />
+                            <TextBlock Text="Choose one or more languages. You can change this later in Settings." FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" />
+                            <ItemsRepeater ItemsSource="{Binding OnboardingLanguageOptions}">
+                                <ItemsRepeater.Layout><UniformGridLayout MaximumRowsOrColumns="4" MinItemWidth="125" MinItemHeight="30" /></ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate><DataTemplate><CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" AutomationProperties.Name="{Binding DisplayName}" /></DataTemplate></ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+
+                    <StackPanel Grid.Row="3" Spacing="8">
+                        <TextBlock Text="Which countries should we prepare?" FontWeight="SemiBold" />
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <RadioButton Content="All countries (recommended)" GroupName="OnboardingCountryScope" IsChecked="{Binding OnboardingCacheAllCountries, Mode=TwoWay}" AutomationProperties.Name="Prepare all countries" />
+                            <RadioButton Content="Choose specific countries" GroupName="OnboardingCountryScope" IsChecked="{Binding OnboardingCacheAllCountries, Converter={StaticResource InverseBool}, Mode=TwoWay}" AutomationProperties.Name="Prepare specific countries only" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding OnboardingCountryScopeSummary}" FontSize="12" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="4" ColumnSpacing="8" Visibility="{Binding OnboardingCacheAllCountries, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBox PlaceholderText="Search countries" Text="{Binding OnboardingSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search onboarding countries" />
+                        <Button Grid.Column="1" Content="{Binding OnboardingSelectionToggleLabel}" Command="{Binding ToggleAllOnboardingCountriesCommand}" AutomationProperties.Name="Select or clear all onboarding countries" />
+                    </Grid>
+                    <TextBlock Grid.Row="5" Text="{Binding OnboardingSelectionLabel}" Foreground="{ThemeResource GlassMutedTextBrush}" AutomationProperties.Name="Onboarding country selection count" Visibility="{Binding OnboardingCacheAllCountries, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
+                    <ListView Grid.Row="6" ItemsSource="{Binding OnboardingVisibleCountryItems}" SelectionMode="None" ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Onboarding country selection" Visibility="{Binding OnboardingCacheAllCountries, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                        <ListView.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="3" /></ItemsPanelTemplate></ListView.ItemsPanel>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Button Width="205" Margin="0,0,8,8" Padding="{ThemeResource GlassControlPadding}" Command="{Binding DataContext.ToggleOnboardingCountryCommand, ElementName=Root}" CommandParameter="{Binding}" AutomationProperties.Name="{Binding SelectionAutomationName}" HorizontalContentAlignment="Stretch">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Image Source="{Binding FlagImagePath}" Width="22" Height="15" Stretch="Uniform" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <FontIcon Grid.Column="2" Glyph="{Binding SelectionGlyph}" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <Grid Grid.Row="7" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="Back" Command="{Binding BackOnboardingStepCommand}" AutomationProperties.Name="Back to welcome" />
+                        <TextBlock Grid.Column="1" Text="Your opening country is the priority country above." VerticalAlignment="Center" Foreground="{ThemeResource GlassMutedTextBrush}" TextWrapping="Wrap" />
+                        <Button Grid.Column="2" Command="{Binding CompleteOnboardingCommand}" IsEnabled="{Binding IsStartingOnboarding, Converter={StaticResource InverseBool}}" HorizontalAlignment="Right" AutomationProperties.Name="Complete Glass Radio onboarding"><StackPanel Orientation="Horizontal" Spacing="8"><ProgressRing Width="16" Height="16" IsActive="{Binding IsStartingOnboarding}" Visibility="{Binding IsStartingOnboarding, Converter={StaticResource BoolToVisibility}}" /><TextBlock Text="{Binding OnboardingActionLabel}" /></StackPanel></Button>
+                    </Grid>
+                </Grid>
+              </Grid>
+            </Border>
+          </Grid>
+        </Grid>
+
+        <!-- Build/caching step: a dedicated screen (not a silent background task) while the
+             priority country loads and any remaining selected countries cache, matching the
+             Mac InitialLoadingView contract including its optional loading-time mini game. -->
+        <Grid Grid.ColumnSpan="3" Background="{ThemeResource GlassOnboardingOverlayBrush}" Visibility="{Binding IsInitialLoading, Converter={StaticResource BoolToVisibility}}" Canvas.ZIndex="500">
+          <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Border Grid.Column="1" Width="560" Margin="{ThemeResource GlassDialogPadding}" Background="{ThemeResource GlassPanelBrush}" BorderBrush="{ThemeResource GlassPanelBorderBrush}" BorderThickness="1" CornerRadius="18" Padding="{ThemeResource GlassDialogPadding}">
+                <StackPanel Spacing="16">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Building your global radio library" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding InitialLoadingMessage}" Foreground="{ThemeResource GlassMutedTextBrush}" AutomationProperties.Name="Library build status" />
+                    </StackPanel>
+                    <ProgressBar Value="{Binding InitialLoadingProgress}" Maximum="1" Minimum="0" AutomationProperties.Name="Library build progress" />
+                    <StackPanel Spacing="10" Visibility="{Binding IsMiniGamePresented, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                        <TextBlock Text="Do you want to play a game while you wait?" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                        <Button Content="Start Game" HorizontalAlignment="Center" Command="{Binding ToggleMiniGameCommand}" AutomationProperties.Name="Start mini game while the library builds" />
+                    </StackPanel>
+                    <local:MiniPongControl x:Name="MiniGame" Visibility="{Binding IsMiniGamePresented, Converter={StaticResource BoolToVisibility}}" CloseRequested="MiniGame_CloseRequested" />
+                </StackPanel>
+            </Border>
+          </Grid>
+        </Grid>
+    </Grid>
+</Window>

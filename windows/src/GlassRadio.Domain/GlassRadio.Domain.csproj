@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>GlassRadio.Domain</AssemblyName>
+    <RootNamespace>GlassRadio.Domain</RootNamespace>
+  </PropertyGroup>
+</Project>

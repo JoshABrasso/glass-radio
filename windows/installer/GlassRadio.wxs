@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="Glass Radio"
+    Manufacturer="Glass Radio"
+    Version="1.0.1.0"
+    Language="1033"
+    UpgradeCode="8B5B5D4A-3D51-4C40-9EA5-5B5D7F2B9C18"
+    Scope="perUserOrMachine"
+    Compressed="yes">
+    <SummaryInformation Description="Glass Radio personal FOSS internet radio application." />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Glass Radio is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="MainFeature" Title="Glass Radio" Level="1">
+      <ComponentGroupRef Id="ApplicationFiles" />
+      <ComponentRef Id="GlassRadioExecutable" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Glass Radio" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="GlassRadioMenuFolder" Name="Glass Radio" />
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\GlassRadio.exe" />
+      </Files>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="GlassRadioExecutable" Directory="INSTALLFOLDER">
+      <File Id="GlassRadioExe" Source="$(var.PublishDir)\GlassRadio.exe" KeyPath="yes" Checksum="yes" />
+    </Component>
+
+    <Component Id="StartMenuShortcut" Directory="GlassRadioMenuFolder">
+      <!-- The property target keeps the Start Menu shortcut in its own per-user
+           component without triggering ICE69 against the machine payload component. -->
+      <Shortcut Id="GlassRadioShortcut" Name="Glass Radio" Target="[INSTALLFOLDER]GlassRadio.exe" WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveGlassRadioMenuFolder" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\GlassRadio" Name="Installed" Type="integer" Value="1" />
+    </Component>
+  </Fragment>
+</Wix>

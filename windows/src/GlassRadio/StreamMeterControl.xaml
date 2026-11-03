@@ -1,0 +1,14 @@
+<UserControl
+    x:Class="GlassRadio.StreamMeterControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    AutomationProperties.Name="Stream activity indicator"
+    Loaded="Root_Loaded"
+    Unloaded="Root_Unloaded">
+    <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center" Width="25" Height="18">
+        <Border x:Name="BarOne" Width="4" Height="7" CornerRadius="2" VerticalAlignment="Bottom" />
+        <Border x:Name="BarTwo" Width="4" Height="12" CornerRadius="2" VerticalAlignment="Bottom" />
+        <Border x:Name="BarThree" Width="4" Height="16" CornerRadius="2" VerticalAlignment="Bottom" />
+        <Border x:Name="BarFour" Width="4" Height="10" CornerRadius="2" VerticalAlignment="Bottom" />
+    </StackPanel>
+</UserControl>
